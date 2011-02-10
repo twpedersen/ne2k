@@ -1,0 +1,1003 @@
+<?xml version="1.0" ?>
+
+<TOS_error_codes>
+
+<note>
+  If your system crashes, no error code will be displayed. In that case
+  you will need to manually debug TOS as explained in class. Sometimes
+  a test case will print out an error code. The detailed explanation of
+  this code can be found on this page.
+</note>
+
+<error_code id="1">
+      <description>
+         Memory access error: the content in a memory address is not 
+         as expected.
+      </description>
+      <possible_error_source>peek()</possible_error_source>
+      <possible_error_source>poke()</possible_error_source>
+      <hints> 
+         <hint>Did you peek/poke into the right memory address? </hint>
+         <hint>Did you peek/poke byte, word, and long properly? </hint>
+      </hints>
+</error_code>
+
+<error_code id="2">
+      <description>
+         Screen output error: incorrect characters printed on screen. 
+      </description>
+      <possible_error_source>clear_window()</possible_error_source>
+      <possible_error_source>output_string()</possible_error_source>
+      <possible_error_source>output_char()</possible_error_source>
+      <possible_error_source>printnum()</possible_error_source>
+      <hints> 
+         <hint>Did you clear the screen and place the cursor at the top
+               left corner in clear_window()?</hint>
+         <hint>Did you move the cursor every time you printed a character? 
+               </hint>
+         <hint>Do you move the cursor to the next line when you print
+               '\n'?</hint>
+         <hint>Did you use poke_b(), not poke_w() or poke_l(), 
+               to print characters onto the screen?</hint>
+         <hint>Did you calculate the memory address correctly? (Each visible 
+               character is represented by two bytes. The first byte is used 
+               for the character and the second byte is used for the 
+               attribute. Each line can display  80 visible characters,
+               and there are 25 lines.) </hint>
+         <hint>Did you scroll the window up when the cursor reached the bottom 
+               of the window? </hint>
+         <hint>Did you make sure you wrap-around to the next line when
+               you reach the right border of a window?</hint>
+         <hint>In printnum(), did you print '-' for negative numbers? </hint>
+         <hint>Did you convert the number to the correct base? </hint>
+         <hint>Did you remember to put padding characters when 
+               required?</hint>
+         <hint>When printing hexadecimal numbers, did you use upper case
+               or lower case characters as required? </hint>
+      </hints> 
+</error_code>
+
+<error_code id="3">
+      <description>
+         Screen output error: character attributes are not correct.
+      </description>
+      <possible_error_source>output_char()</possible_error_source>
+      <hints>
+         <hint>Did you use 0x0f as the default attribute?</hint> 
+         <hint>When printing a character, did you remember to set the 
+               attribute for the character?</hint>
+      </hints>
+</error_code>
+
+<error_code id="9">
+      <description> 
+         PCB array error: the number of used entries in the PCB array is not as
+         expected.
+      </description>
+      <possible_error_source> init_process() </possible_error_source>
+      <possible_error_source> create_process() </possible_error_source>
+      <hints>
+         <hint>In init_process(), did you mark all entries, except the
+               one used for the boot process, as unused?</hint>
+         <hint>Did you change the field "used" to TRUE when
+               initializing a PCB entry for a new process?</hint>
+      </hints>
+</error_code>
+
+<error_code id="10">
+      <description>
+         PCB array error: a created process is not in the PCB array. 
+      </description>
+      <possible_error_source> create_process() </possible_error_source>
+      <hints> 
+         <hint>Did you use a new (unused) PCB entry for the new 
+               process?</hint>
+         <hint>Did you change the field "used" to TRUE when
+               initializing a PCB entry for the new process?</hint>
+      </hints>
+</error_code>
+
+<error_code id="11">
+      <description> 
+         PCB entry error: a process's PCB entry is not initialized
+         correctly.
+      </description>
+      <possible_error_source> create_process() </possible_error_source>
+      <hints>
+         <hint>(--- This hint applys only at stage one, before interrupts are
+               handled ---) 
+               Did you correctly set all the following fields: magic, used, 
+               state, priority, first_port, and name?</hint>
+      </hints>
+</error_code>
+
+<error_code id="12">
+      <description> 
+         Stack error: a new process's stack is not initialized correctly. 
+      </description>
+      <possible_error_source> create_process() </possible_error_source>
+      <hints>
+         <hint>Did you remember to set the field "esp" when initializing
+               the PCB entry for the new process? 
+               ("esp" should point to the last element you pushed
+               onto the process's stack.) </hint>
+         <hint>Before pushing(storing) an element onto the stack, did you 
+               substract the stack pointer (the memory address where the 
+               element would be stored at) by 4?
+               </hint>
+         <hint>Did you push the elements as long values?</hint>
+         <hint>(--- This hint applys only at stage one, before interrupts are
+               handled ---) 
+               Did you push the following elements in the correct order
+               onto the stack: param, self, return address(0), address of
+               the process(func), EAX(0), ECX(0), EDX(0), EBX(0), EBP(0),
+               ESI(0), and EDI(0)? </hint>
+      </hints>
+</error_code>
+
+<error_code id="13">
+      <description>
+         Process error: a process's state is not correct.
+      </description>
+      <possible_error_source> create_process() </possible_error_source>
+      <possible_error_source> (other functions where a process's state 
+         should be changed.) </possible_error_source>
+      <hints>
+         <hint>When a new process is created, did you set its state to
+               STATE_READY? </hint>
+      </hints>
+</error_code>
+
+<error_code id="14">
+      <description> 
+         Ready queue error: a process is on the ready queue while it should be
+         off the ready queue.
+      </description>
+      <possible_error_source> init_dispatcher() </possible_error_source>
+      <possible_error_source> remove_ready_queue() </possible_error_source>
+      <possible_error_source> send() </possible_error_source>
+      <possible_error_source> message() </possible_error_source>
+      <possible_error_source> receive() </possible_error_source>
+      <possible_error_source> (other functions where a process should be
+         removed from ready queue.) </possible_error_source>
+      <hints>
+         <hint>In init_dispatcher(), did you clean up all the ready queues 
+               and add the boot process to ready_queue[1]?</hint>  
+         <hint>In remove_ready_queue(), did you actually remove the process
+               from the double linked list?</hint>
+         <hint>Did you maintain the double linked list structure 
+               of the ready queues correctly ? (See error code 19.) </hint>
+         <hint>When a process's state was changed from STATE_READY to
+               any other state, did you remove it from the ready queue?</hint>
+      </hints>
+</error_code>
+
+<error_code id="15">
+      <description>
+         Ready queue error: a process is off ready queue while it should be
+         on ready queue. 
+      </description>
+      <possible_error_source> add_ready_queue() </possible_error_source>
+      <possible_error_source> create_process() </possible_error_source>
+      <possible_error_source> send() </possible_error_source>
+      <possible_error_source> message() </possible_error_source>
+      <possible_error_source> receive() </possible_error_source>
+      <possible_error_source> (other functions where a process should be added
+         to the ready queue.) </possible_error_source>
+      <hints>
+         <hint>In add_ready_queue(), did you add the process to the ready queue
+               of the correct priority? </hint>
+         <hint>In create-process(), did you remember to add the new process to
+               the ready queue? </hint>
+         <hint>Did you maintain the double linked list structure of the ready
+               queues correctly? (See error code 19.)</hint>
+         <hint>When a process's state is changed from another state to
+               STATE_READY, did you add it to the ready queue?</hint>
+      </hints>
+</error_code>
+
+<error_code id="16">
+      <description>
+         Ready queue error: a process is on ready queue while its state is
+         not STATE_READY. 
+      </description> 
+      <possible_error_source> 
+         (functions that change a process's state.) 
+      </possible_error_source>
+      <hints>
+         <hint>When you change a process's state from STATE_READY to any
+               other state, did you remove it from the ready queue? </hint>
+         <hint>When a process is added to ready queue after being blocked, 
+               did you change its state back to STATE_READY?</hint>
+      </hints>
+</error_code>
+
+<error_code id="17">
+      <description>
+          Ready queue error: processes are in incorrect order on a ready queue.
+          Processes on a ready queue should be in the same order as they are
+          added to the ready queue. 
+      </description> 
+      <possible_error_source> add_ready_queue() </possible_error_source>
+      <hints>
+         <hint>When you add a process to a ready queue, did you add it to
+               the end of the ready queue? </hint>
+         <hint>Did you maintain the double linked list structure of the ready
+               queues correctly? (See error code 19.)</hint>
+      </hints>
+</error_code>
+
+<error_code id="18">
+      <description>
+         Ready queue error: the number of processes on the ready queues is not
+         as expected. 
+      </description> 
+      <possible_error_source> init_dipatcher() </possible_error_source>
+      <possible_error_source> add_ready_queue() </possible_error_source>
+      <possible_error_source> remove_ready_queue() </possible_error_source>
+      <possible_error_source> create_process() </possible_error_source>
+      <possible_error_source> (other functions which add processes to or remove
+         processes from the ready queues. </possible_error_source>
+      <hints>
+         <hint>In init_dispatcher(), did you clean up all ready queues 
+               and add boot process to ready_queue[1]?</hint>  
+         <hint>Did you maintain the double linked list structure of the ready
+               queues correctly? (See error code 19.)</hint>
+         <hint>When required, did you remember to remove a process from 
+               or add a process to the ready queue? </hint> 
+      </hints>
+</error_code>
+
+<error_code id="19">
+      <description>
+          Ready queue error: the double linked list structure of the ready
+          queues is not maintained correclty.
+      </description> 
+      <possible_error_source> add_ready_queue() </possible_error_source>
+      <possible_error_source> remove_ready_queue() </possible_error_source>
+      <hints>
+         <hint>Did you set a process's "next" and "prev" (in the PCB entry)
+               correctly when you add it to the double linked list? </hint>
+         <hint>When you add a process to a  
+               ready queue, did you reset "next" and "pre" of the previous
+               process and those of the next process? </hint>
+         <hint>When you remove a process from a  
+               ready queue, did you also reset "next" and "pre" of the previous
+               process and those of the next process? </hint>
+         <hint>Is the double linked list Round-Robin? ("next" of the last
+               process should point to the first process, and "pre" of 
+               the first process should point to the last process.)</hint>
+         <hint>Did you set ready_queue[priority] to null when the last
+               process is removed from the ready queue of that priority? </hint>
+         <hint>When there is only one process on a ready queue, are its 
+               "next" and "pre" pointing to itself?</hint>
+      </hints>
+</error_code>
+
+<error_code id="20">
+      <description>
+         Process error: process's parameter is not correct. 
+      </description> 
+      <possible_error_source> create_process() </possible_error_source>
+      <hints>
+         <hint>(--- This hint applys only at stage one, before interrupts are
+               handled ---) 
+               Did you push the following elements in the correct order
+               onto the the process' stack: param, self, return address(0), 
+               address of the process(func), EAX(0), ECX(0), EDX(0), EBX(0), 
+               EBP(0), ESI(0), and EDI(0)? </hint>
+      </hints>
+</error_code>
+
+<error_code id="21">
+      <description> 
+         Resign() error: context switch did not happen.
+      </description> 
+      <possible_error_source> resign() </possible_error_source>
+      <possible_error_source> dispatch() </possible_error_source>
+      <possible_error_source> create_process() </possible_error_source>
+      <hints>
+         <hint>In create_process(), did you initialize the process's stack
+               correctly? (See error code 12.) </hint>
+         <hint>(--- This hint applys only at stage one, before interrupts are
+               handled ---) 
+               In resign(), did you first push the following registers onto
+               the old process's stack: EAX, ECX, EDX, EBX, EBP, ESI, EDI?
+               </hint>
+         <hint>In resign(), after pushing the registers onto the stack, 
+               did you set the field "esp" (in the PCB entry) 
+               of the old process? ("active_proc->esp = %ESP.)</hint>
+         <hint>In dispatch(), did you find the correct process to dispach?  
+               (See error code ) </hint>
+         <hint>In resign(), after calling dispatch() to get the new process,
+               did you reset register ESP so that it points to
+               the new process's stack? ("%ESP = active_proc->esp");</hint>
+         <hint>(--- This hint applys only at stage one, before interrupts are
+               handled ---) 
+               In resign(), after reseting ESP, did you pop the following 
+               registers: EAX, ECX, EDX, EBX, EBP, ESI, EDI? </hint>
+      </hints>
+</error_code>
+
+<error_code id="22">
+      <description>
+         Dispatch() error: processes with lower priorities are dispatched before
+             processes with higher priorities. 
+      </description>
+      <possible_error_source> dispatch() </possible_error_source>
+      <possible_error_source> add_ready_queue() </possible_error_source>
+      <possible_error_source> remove_ready_queue() </possible_error_source>
+      <possible_error_source> create_process() </possible_error_source>
+      <possible_error_source> (Other functions that add processes to or remove
+        processes from ready queues) </possible_error_source>
+      <hints>
+         <hint>In dispatch(), did you scan the ready queues? </hint>
+         <hint>Did you scan the ready queues in the order of priority? 
+               (Those of higher priorites should be scanned before those of 
+               lower priorities, no matter the priority of active_pro.)</hint>
+         <hint>Did you maintain the ready queues correclty? 
+               (See error codes 14-19.)</hint> 
+      </hints>
+</error_code>
+
+<error_code id="23">
+      <description> 
+         Dispatch() error: for processes of the same priority, 
+          those added to ready queue later are dispached before
+          those added earlier. </description>
+      <possible_error_source> dispatch() </possible_error_source>
+      <possible_error_source> add_ready_queue() </possible_error_source>
+      <hints>
+         <hint>In dispatch(), did you scan a ready queue forword, starting
+               with the first process or active_proc?</hint>
+         <hint>In add_ready_queue(), did you add the process to the end of
+               a ready queue?</hint>   
+      </hints>
+</error_code>
+
+<error_code id="24">
+      <description> 
+          Dispatch() error: processes of the same priority are dispatched 
+          incorrectly, i.e., when one process resigns, the execution is not 
+          passed to its next process. (The next process could be the active
+          process itself or another process.)</description>
+      <possible_error_source> dispatch() </possible_error_source>
+      <possible_error_source> add_ready_queue() </possible_error_source>
+      <hints>
+         <hint>In dispatch(), when there is no process of higher priority
+               and active_proc->next is a process on the ready queue, did
+               you dispatch it? 
+               (A common mistake is to dispatch the first process on the 
+               ready queue.) </hint>
+         <hint>Did you maintain the ready queue correctly? 
+               (See error codes 14-19.)</hint> 
+      </hints>
+</error_code>
+
+
+<error_code id="25">
+      <description>
+          Dispatch() error: processes are dispatched in incorrect order. 
+          This error includes all possible situations, including those
+          described in error code 22, 23 and 24.
+          Please refer to the test case
+          and screen output to find out what "incorrect order" actually is.  
+      </description>
+      <hints>
+         <hint>Did you maintain the double linked list structure 
+               of the ready queues correctly ?
+               (See error code 19.) </hint>
+         <hint>When active_proc is not on ready queue and there is no other
+               process of higher or the same priority as active_proc, did
+               you scan ready queues of lower priority?</hint> 
+         <hint>(See error code 22, 23, and 24.)</hint> 
+      </hints>
+</error_code>
+
+<error_code id="26">
+      <description>
+         Dispatch() error: processes are dispatched after they are removed
+         from ready queues.
+      </description> 
+      <possible_error_source> dispatch() </possible_error_source>
+      <possible_error_source> remove_ready_queue() </possible_error_source>
+      <possible_error_source> any other funtion that should remove a process
+         from a ready queue. </possible_error_source>
+      <hints>
+         <hint>When required, did you remember to remove a process from
+               a ready queue? (See error code 14 and 18.) </hint>
+         <hint>In dispatch(), did you find the process from the ready queues?
+               A common mistake is, when there is no process of higher priority,
+               to dispatch active_proc->next without checking if this process 
+               is actually on the ready queue.  (activer_proc-> next could 
+               be the active process itself or another process.) </hint> 
+      </hints>
+</error_code>
+
+<error_code id="31">
+      <description>
+         Port error: a port is not initialized correctly. 
+      </description> 
+      <possible_error_source> create_new_port() </possible_error_source>
+      <possible_error_source> create_new_port(PROCESS proc)
+      </possible_error_source>
+      <hints>
+         <hint> When creating a new port, did you correctly initialize
+                the port's attributes: "magic," "used," "open," and "owner?"
+                </hint>
+      </hints>
+</error_code>
+
+<error_code id="32">
+      <description>
+         Port error: a port is not on its owner's port list. 
+      </description> 
+      <possible_error_source> create_new_port() </possible_error_source>
+      <possible_error_source> create_new_port(PROCESS proc)
+      </possible_error_source>
+      <hints>
+         <hint> When creating a new port, did you remember to add it to its 
+                owner's port list? (The head of the list is pointed by
+                "first_port" of the process.) </hint>
+      </hints>
+</error_code>
+
+<error_code id="33">
+      <description>
+         Port error: a port is closed when it is supposed to be open.
+      </description> 
+      <possible_error_source> create_new_port() </possible_error_source>
+      <possible_error_source> create_new_port(PROCESS proc)
+         </possible_error_source>
+      <possible_error_source> open_port()  </possible_error_source>
+      <possible_error_source> (Other functions that should open 
+         a port.)  </possible_error_source>
+      <hints>
+         <hint> In open_port(), did you change the field "open" to TRUE?
+                </hint>
+         <hint> When creating a new port, did you remember to set the
+                field "open" to TRUE? </hint>
+         <hint> Did you remember to call open_port() when
+                you are supposed to? </hint>
+      </hints>
+</error_code>
+
+<error_code id="34">
+      <description>
+         Port error: a port is open when it is supposed to be close.
+      </description> 
+      <possible_error_source> close_port()  </possible_error_source>
+      <possible_error_source> (Other functions that should close 
+         a port.)  </possible_error_source>
+      <hints>
+         <hint> In close_port(), did you change the field "open" to FALSE?
+                </hint>
+         <hint> Did you remember to call close_port() when
+                you are supposed to?</hint>
+      </hints>
+</error_code>
+
+
+<error_code id="35">
+      <description>
+         IPC error: a sender did not become STATE_SEND_BLOCKED after it
+         did a send() to a closed port or a receiver that was not ready
+         to receive.
+      </description> 
+      <possible_error_source> send() </possible_error_source>
+      <hints>
+         <hint> Did you check if the message could be immediatly delivered? 
+                i.e. was the receiver STATE_RECEIVE_BLOCKED and was the 
+                port open?</hint>
+         <hint> If the message could not be immediately delivered,
+                did you change the sender to STATE_SEND_BLOCKED? </hint> 
+      </hints>
+</error_code>
+
+
+<error_code id="36">
+      <description>
+         IPC error: a sender was not removed from the ready queue after it
+         sent a message to a close port or a receiver that was not ready
+         to receive.
+      </description> 
+      <possible_error_source> send() </possible_error_source>
+      <possible_error_source> message() </possible_error_source>
+      <hints>
+         <hint> Did you check if the message could be immediatly delivered? 
+                i.e. was the receiver STATE_RECEIVE_BLOCKED and was the 
+                port open?</hint>
+         <hint> If the message could not be immediately delivered,
+                did you remove the sender from the ready queue? </hint> 
+      </hints>
+</error_code>
+
+<error_code id="37">
+      <description>
+         IPC error: a sender was not blocked after it sent a message
+         to a close port or a receiver that was not ready to receive.
+      </description> 
+      <possible_error_source> send() </possible_error_source>
+      <possible_error_source> message() </possible_error_source>
+      <hints>
+         <hint> Did you check if the message could be immediatly delivered? 
+                i.e. was the receiver STATE_RECEIVE_BLOCKED and was the 
+                port open?</hint>
+         <hint> If the message could not be immediately delivered,
+                did you remove it from the ready queue and do a resign()? 
+                </hint> 
+      </hints>
+</error_code>
+
+<error_code id="38">
+      <description>
+         IPC error: after its message was received by the receiver, a sender
+         that was STATE_SEND_BLOCKED did not become STATE_REPLY_BLOCKED. 
+      </description> 
+      <possible_error_source> receive() </possible_error_source>
+      <hints>
+         <hint> In receive(), when you found a pending sender from the
+                blocked list, did you check if the sender is STATE_SEND_BLOCK?
+                </hint>
+         <hint> If the sender was STATE_SEND_BLOCKED, did you
+                change the sender's state to STATE_REPLY_BLOCKED? </hint>
+      </hints>
+</error_code>
+
+<error_code id="39">
+      <description>
+         IPC error: after the message was replied to by the receiver, a sender
+         that was STATE_REPLY_BLOCKED did not become STATE_READY. 
+      </description> 
+      <possible_error_source> reply() </possible_error_source>
+      <possible_error_source> receive() </possible_error_source>
+      <hints>
+         <hint> In reply(), did you change the sender to STATE_READY? </hint>
+         <hint> Did you set "sender" correctly in receive()? (So that you 
+                replyed to the correct sender in reply(). ) </hint>
+      </hints>
+</error_code>
+
+<error_code id="40">
+      <description>
+         IPC error: after the message was replied to by the receiver, a sender
+         that was STATE_REPLY_BLOCKED was not added back to the ready queue. 
+      </description> 
+      <possible_error_source> reply() </possible_error_source>
+      <possible_error_source> receive() </possible_error_source>
+      <hints>
+         <hint> In reply(), did you add the sender back to the
+                ready queue? </hint>
+         <hint> Did you set "sender" correctly in receive()? (So that you 
+                replyed to the correct sender in reply(). ) </hint>
+      </hints>
+</error_code>
+
+<error_code id="41">
+      <description>
+         IPC error: the data a receiver received was not correct. 
+      </description> 
+      <possible_error_source> send() </possible_error_source>
+      <possible_error_source> message() </possible_error_source>
+      <possible_error_source> receive() </possible_error_source>
+      <hints>
+         <hint> In send() and message(), when the message could be immediately 
+                received, i.e. the receiver was STATE_RECEIVE_BLOCKED and
+                the port was open, did you set receiver's "param_proc" 
+                and "param_data" in order to pass the parameters? </hint> 
+         <hint> In send() and message(), when the message could not be 
+                immediately received, did you set sender's "param_data"
+                in order to pass the data? </hint>
+         <hint> In receive(), when the receiver is woken up from 
+                STATE_RECEIVE_BLOCKED, did you get the parameters from 
+                its "param_proc" and "param_data"? </hint>
+         <hint> In receive(), when the message was from a pending sender,  
+                did you get the data from the sender's "param_data"? </hint>
+      </hints>
+</error_code>
+
+<error_code id="42">
+      <description>
+          IPC error: the data returned from a receiver was not correct. 
+      </description> 
+      <possible_error_source> send() </possible_error_source>
+      <possible_error_source> message() </possible_error_source>
+      <possible_error_source> receive() </possible_error_source>
+      <hints>
+         <hint> See error code 38. </hint>
+         <hint> In receive(), are you returning the address of the data instead
+                of the data itself? (The return type of receive() is "void*" )
+                </hint>
+      </hints>
+</error_code>
+
+
+<error_code id="43">
+      <description>
+         IPC error: a sender did not become STATE_MESSAGE_BLOCKED after it
+         did a message() to a closed port or a receiver that was not ready
+         to receive.
+      </description> 
+      <possible_error_source> message() </possible_error_source>
+      <hints>
+         <hint> Did you check if the message could be immediatly delivered? 
+                i.e. was the receiver STATE_RECEIVE_BLOCKED and was the 
+                port open?</hint>
+         <hint> If the message could not be immediately delivered,
+                did you change the sender to STATE_MESSAGE_BLOCKED? </hint> 
+      </hints>
+</error_code>
+
+<error_code id="44">
+      <description>
+         IPC error: the same message was received more than once.
+      </description> 
+      <possible_error_source> receive() </possible_error_source>
+      <possible_error_source> message() </possible_error_source>
+      <possible_error_source> send() </possible_error_source>
+      <hints>
+         <hint> In receive(), once you received a pending  message,
+                did you remove the sender from the blocked list? </hint>
+         <hint> Did you maintain send blocked lists correctly? When removing 
+                a sender from the head of the list, did you set "blocked_
+                list_head" (of the port) to the next node? 
+                When adding a node to the end of the list, did you make sure
+                that its "next_blocked" is pointing to NULL? </hint>
+      </hints>
+</error_code>
+
+<error_code id="45">
+      <description>
+         IPC error: after its message was received by the receiver, a sender
+         that was STATE_MESSAGE_BLOCKED did not become STATE_READY.
+      </description> 
+      <possible_error_source> receive() </possible_error_source>
+      <hints>
+         <hint> In receive(), when you found a pending sender from a  
+                blocked list, did you check if the sender was STATE_SEND_BLOCK?
+                </hint>
+         <hint> If the sender was not STATE_SEND_BLOCKED, which implied that 
+                it was STATE_MESSAGE_BLOCKED, did you change it's state to
+                STATE_READY?</hint>
+      </hints>
+</error_code>
+
+<error_code id="46">
+      <description>
+         IPC error: after its message was received by the receiver, a sender
+         that was STATE_MESSAGE_BLOCKED was not added back to the ready queue. 
+      </description> 
+      <possible_error_source> receive() </possible_error_source>
+      <hints>
+         <hint> In receive(), when you found a pending sender from a  
+                blocked list, did you check if the sender was STATE_SEND_BLOCK?
+                </hint>
+         <hint> If the sender was not STATE_SEND_BLOCKED, which implied that 
+                it was STATE_MESSAGE_BLOCKED, did you add it back to
+                the ready queue?</hint>
+      </hints>
+</error_code>
+
+<error_code id="47">
+      <description>
+         IPC error: when there was no sender pending, a receiver was not  
+         blocked after it executed a receive().
+      </description> 
+      <possible_error_source> receive() </possible_error_source>
+      <hints>
+         <hint> Did you scan the open ports to check if there were pending
+                senders? </hint>
+         <hint> When there was no sender pending, did you remove 
+                the receiver from the ready queue and do a resign()? </hint>
+      </hints>
+</error_code>
+
+<error_code id="48">
+      <description>
+         IPC error: when there was no sender pending, a receiver did not 
+         become STATE_RECEIVE_BLOCKED after it executed a receive().
+      </description> 
+      <possible_error_source> receive() </possible_error_source>
+      <hints>
+         <hint> Did you scan the open ports to check if there were pending
+                senders? </hint>
+         <hint> When there was no sender pending, did you change the
+                receiver to STATE_RECEIVE_BLOCKED? </hint> 
+      </hints>
+</error_code>
+
+<error_code id="49">
+      <description>
+         IPC error: A sender was not blocked after doing a send(). When the
+         receiver is STATE_RECEIVE_BLOCKED and the port is open, the sender
+         should become STATE_REPLY_BLOCKED and be blocked; when the receiver
+         is not STATE_RECEIVE_BLOCKED or the port is closed,
+         the sender should become STATE_SEND_BLOCKED and be blocked. 
+      </description> 
+      <possible_error_source> send() </possible_error_source>
+      <hints>
+         <hint> Did you check if the receiver was ready to receive?
+                i.e. was the receiver STATE_RECEIVE_BLOCKED?</hint>
+         <hint> Did you check if the port was open? </hint>
+         <hint> If the receiver was STATE_RECEIVE_BLOCKED and the port
+                was open, did you change the sender to STATE_REPLY_BLOCKED,  
+                remove it from the ready queue, and did a resign()? </hint> 
+         <hint> If the receiver is not STATE_RECEIVE_BLOCKED or the port
+                is close, did you change the sender to STATE_SEND_BLOCKED,  
+                remove it from the ready queue, and did a resign()? </hint> 
+      </hints>
+</error_code>
+
+
+<error_code id="50">
+      <description>
+         IPC error: after doing a send() to an open port of a 
+         STATE_RECEIVE_BLOCKED receiver, a sender did not become 
+         STATE_REPLY_BLOCKED. 
+      </description> 
+      <possible_error_source> send() </possible_error_source>
+      <hints>
+         <hint> Did you check if the message could be immediatly delivered? 
+                i.e. was the receiver STATE_RECEIVE_BLOCKED and was the 
+                port open?</hint>
+         <hint> If the message could be immediately delivered,
+                did you change the sender to STATE_REPLY_BLOCKED? 
+                </hint> 
+      </hints>
+</error_code>
+
+<error_code id="51">
+      <description>
+         IPC error: after doing a send() to an open port of a 
+         STATE_RECEIVE_BLOCKED receiver, a sender was not removed from the
+         ready queue. 
+      </description> 
+      <possible_error_source> send() </possible_error_source>
+      <hints>
+         <hint> See error code 49. </hint> 
+      </hints>
+</error_code>
+
+<error_code id="52">
+      <description>
+         IPC error: after a message was sent to an open port of a 
+         STATE_RECEIVE_BLOCKED receiver, the receiver was not added 
+         back to the ready queue. 
+      </description> 
+      <possible_error_source> send() </possible_error_source>
+      <possible_error_source> message() </possible_error_source>
+      <hints>
+         <hint> Did you check if the message could be immediatly delivered? 
+                i.e. was the receiver STATE_RECEIVE_BLOCKED and was the 
+                port open?</hint>
+         <hint> If the message could be immediately delivered,
+                did you add the receiver back to the ready queue? 
+                </hint> 
+      </hints>
+</error_code>
+
+<error_code id="53">
+      <description>
+         IPC error: after a sender did a send() to an open port of a 
+         STATE_RECEIVE_BLOCKED receiver, the receiver did not become 
+         STATE_READY.
+      </description> 
+      <possible_error_source> send() </possible_error_source>
+      <hints>
+         <hint> Did you check if the message could be immediatly delivered? 
+                i.e. was the receiver STATE_RECEIVE_BLOCKED and was the 
+                port open?</hint>
+         <hint> If the message could be immediately delivered,
+                did you change the receiver's state to STATE_READY? </hint> 
+      </hints>
+</error_code>
+
+<error_code id="54">
+      <description>
+         IPC error: a sender did not do a resign() at the end of message().
+         When receiver is STATE_RECEIVE_BLOCKED and the port is open, the 
+         sender calls resign() so that the receiver gets a chance to
+         pick up the message; when the receiver is not STATE_RECEIVE_BLOCKED
+         or the port is close, the sender becomes STATE_MESSAGE_BLOCKED,
+         be removed from the ready queue, and do a resign().
+      </description> 
+      <possible_error_source> message() </possible_error_source>
+      <hints>
+      </hints>
+</error_code>
+
+<error_code id="55">
+      <description>
+         IPC error: after using message() to send a message to an open port of
+         a STATE_RECEIVE_BLOCKED receiver, a sender's state was not STATE_READY.
+         When the message can be delievered immediately, the sender 
+         remains STATE_READY and on the ready queue. 
+       </description> 
+      <possible_error_source> message() </possible_error_source>
+      <hints>
+      </hints>
+</error_code>
+
+<error_code id="56">
+      <description>
+         IPC error: after using message() to send a message to an open port of
+         a STATE_RECEIVE_BLOCKED receiver, a sender was taken off the
+         ready queue. When the message can be delivered immediately, the 
+         sender should remain STATE_READY and and remain on the ready queue. 
+      </description> 
+      <possible_error_source> message() </possible_error_source>
+      <hints>
+      </hints>
+</error_code>
+
+<error_code id="57">
+      <description>
+         IPC error: when multiple messages were sent to a same port,
+         they were not received in a FIFO order. 
+      </description> 
+      <possible_error_source> receive() </possible_error_source>
+      <possible_error_source> message() </possible_error_source>
+      <possible_error_source> send() </possible_error_source>
+      <hints>
+         <hint> In receive(), did you scan a blocked list from
+                head to tail? </hint> 
+         <hint> In send() and message(), when the receiver was not ready to 
+                receive or the port was closed, did you add the sender to
+                the tail of the blocked list? </hint>
+      </hints>
+</error_code>
+
+<error_code id="58">
+      <description>
+         IPC error: wrong message was received. Many possible causes, please
+         refer to the test case to debug. 
+      </description> 
+</error_code>
+
+<error_code id="59">
+      <description>
+         IPC error: messages were lost. The number of messages a receiver
+         received was less than the number of messages sent 
+         to the receiver.
+      </description> 
+      <possible_error_source> receive() </possible_error_source>
+      <possible_error_source> send() </possible_error_source>
+      <possible_error_source> message() </possible_error_source>
+      <hints>
+         <hint> In receive(), did you scan all opened ports? </hint>
+         <hint> In send() and message(), when the receiver was not ready
+                to receive or when the port was closed, did you remember to
+                add the sender to the port's blocked list?
+                </hint>
+         <hint> Did you maintain the blocked lists correctly? When you added a 
+                node to the end of the list, did you remember to set the 
+                previous node's "next_blocked" so that it pointed to the new
+                node? </hint> 
+      </hints>
+</error_code>
+
+<error_code id="60">
+      <description>
+         IPC error: messages sent to a closed port was received by the 
+         receiver. When a port is closed, all messages sent to the port
+         become pending, and the receiver should not receive any of them
+         until the port is re-opened.
+      </description> 
+      <possible_error_source> receive() </possible_error_source>
+      <possible_error_source> message() </possible_error_source>
+      <possible_error_source> send() </possible_error_source>
+      <hints>
+         <hint> In receive(), did you scan only open ports? </hint>
+         <hint> In message() and send(), when the port is closed, did you add 
+                the sender to the blocked list of the corret port? </hint>
+         <hint> Did you maintain the blocked lists corretly? When you added 
+                a node to the end of the list, did you make sure that
+                its "next_blocked" is pointing to NULL? </hint>
+      </hints>
+</error_code>
+
+<error_code id="70">
+      <description>
+          Interrupt error: interrupts are not initialized correctly. 
+      </description> 
+      <possible_error_source> init_interrupts() </possible_error_source>
+      <possible_error_source> init_idt_entry() </possible_error_source>
+      <hints>
+         <hint> Did you initialize an IDT entry correctly in
+                init_idt_entry()? </hint>
+         <hint> Did you initialize all IDT entries? </hint> 
+         <hint> Did you call load_idt() in init_interrupts()? </hint>
+         <hint> Did you call re_program_interrupt_controller() in 
+                init_interrupts()? </hint>
+      </hints>
+</error_code>
+
+<error_code id="71">
+      <description>
+          Interrupt error: timer interrupt is not working properly. 
+      </description> 
+      <possible_error_source> init_interrupts() </possible_error_source>
+      <possible_error_source> create_process() </possible_error_source>
+      <possible_error_source> resign() </possible_error_source>
+      <possible_error_source> isr_timer() </possible_error_source>
+      <hints>
+         <hint> Did you initialize interrupts correctly? (See error code
+                70) </hint>
+         <hint> Did you remember to initialize the timer isr in 
+                init_interrupts()? </hint>
+         <hint> Did you use "TIMER_IRQ" for timer isr? </hint>
+         <hint> Did you modify create_process() and resign() so that
+                your process stacks contain EFLAGS and EIP? </hint>
+         <hint> Did you do a context switch in the timer isr? </hint> 
+      </hints>
+</error_code>
+
+<error_code id="72">
+      <description>
+          Interrupt error: a process called wait_for_interrupt() was not
+          removed from ready queue. 
+      </description> 
+      <possible_error_source> wait_for_interrupt </possible_error_source>
+      <hints>
+         <hint> Did you take the process off the ready queue in
+                wait_for_interrupt()? </hint>
+         <hint> Did you call resign() in wait_for_interrupt to block 
+                the process </hint> 
+      </hints>
+</error_code>
+
+<error_code id="73">
+      <description>
+          Interrupt error: an interrupt did not wake up the process waiting
+          for it. 
+      </description> 
+      <possible_error_source> wait_for_interrupt </possible_error_source>
+      <possible_error_source> isr_* </possible_error_source>
+      <hints>
+         <hint> In wait_for_interrupt(), did you check if there was already
+                a process waiting for the same interrupt? </hint>
+         <hint> In wait_for_interrupt(), did you set interrupt_table[*_IRQ] 
+                to the process when there was no other process waiting
+                for the same interrupt? </hint>
+         <hint> In isr_*, did you check if there is a process waiting for
+                the interrupt? </hint>
+         <hint> In isr_*, when there is a process waiting for the interrupt, 
+                did you add the process back to ready queue? </hint>
+      </hints>
+</error_code>
+
+<error_code id="80">
+      <description>
+          Timer service error: timer service is not working properly.
+          A process that did a send() to timer_port was not slowed down.
+      </description> 
+      <possible_error_source> timer_notifier </possible_error_source>
+      <possible_error_source> timer_process </possible_error_source>
+      <hints>
+          <hint> Please refer to the two funtions' pseudocode. </hint> 
+      </hints>
+</error_code>
+
+<error_code id="85">
+      <description>
+          COM error: the message sent back by the loopback device is not the
+      same as the message sent to the loopback device.
+      </description> 
+      <possible_error_source> com_process </possible_error_source>
+      <possible_error_source> com_reader_process </possible_error_source>
+      <possible_error_source> init_com </possible_error_source>
+      <hints>
+         <hint> Please refer to lecture slides. </hint>
+      </hints>
+</error_code>
+
+<error_code id="90">
+      <description>
+          Fork() error: child process is not created correctly.
+      </description> 
+      <possible_error_source> fork() </possible_error_source>
+      <hints>
+      </hints>
+</error_code>
+
+</TOS_error_codes>

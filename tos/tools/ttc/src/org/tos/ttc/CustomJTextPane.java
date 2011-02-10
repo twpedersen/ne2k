@@ -1,0 +1,36 @@
+package org.tos.ttc;
+
+import javax.swing.*;
+
+
+
+/*
+ * Created on 30.01.2005
+ * 
+ * TODO To change the template for this generated file go to Window -
+ * Preferences - Java - Code Style - Code Templates
+ */
+
+/**
+ * @author Olenka
+ * 
+ * TODO To change the template for this generated type comment go to Window -
+ * Preferences - Java - Code Style - Code Templates
+ */
+public class CustomJTextPane
+    extends JTextPane
+{
+
+    public CustomJTextPane()
+    {
+        super();
+    }
+
+
+
+    public boolean getScrollableTracksViewportWidth()
+    {
+        return false;
+    }
+
+}

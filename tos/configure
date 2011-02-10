@@ -1,0 +1,32 @@
+#!/bin/sh
+
+OS=`uname -s`
+
+CC_EXTRA_OPT='-Os'
+LD_EXTRA_OPT=''
+if [ $OS = "Linux" ]
+then
+  CC=gcc
+  LD=ld
+  if [ `uname -m` = "x86_64" ]
+  then
+    CC_EXTRA_OPT='-O -m32 -march=i386 -fno-stack-protector'
+    LD_EXTRA_OPT='-m elf_i386'
+  fi
+else
+  CC=i386-elf-gcc
+  LD=i386-elf-ld
+fi
+
+STRIP=strip
+if [ $OS = "Darwin" ] ; then
+    STRIP=i386-elf-strip
+fi
+
+
+sed -e s/@@CC@@/$CC/g \
+    -e s/@@LD@@/$LD/g \
+    -e s/@@CC_EXTRA_OPT@@/"$CC_EXTRA_OPT"/g \
+    -e s/@@LD_EXTRA_OPT@@/"$LD_EXTRA_OPT"/g \
+    -e s/@@STRIP@@/$STRIP/g \
+       < MakeVars.in > MakeVars

@@ -1,0 +1,20 @@
+# Module dependencies
+# DO NOT DELETE
+
+stdlib.o: ../include/kernel.h ../include/assert.h ../include/stdarg.h
+window.o: ../include/kernel.h ../include/assert.h ../include/stdarg.h
+process.o: ../include/kernel.h ../include/assert.h ../include/stdarg.h
+assert.o: ../include/kernel.h ../include/assert.h ../include/stdarg.h
+mem.o: ../include/kernel.h ../include/assert.h ../include/stdarg.h
+dispatch.o: ../include/kernel.h ../include/assert.h ../include/stdarg.h
+dispatch.o: disptable.c
+intr.o: ../include/kernel.h ../include/assert.h ../include/stdarg.h
+inout.o: ../include/kernel.h ../include/assert.h ../include/stdarg.h
+ipc.o: ../include/kernel.h ../include/assert.h ../include/stdarg.h
+com.o: ../include/kernel.h ../include/assert.h ../include/stdarg.h
+timer.o: ../include/kernel.h ../include/assert.h ../include/stdarg.h
+null.o: ../include/kernel.h ../include/assert.h ../include/stdarg.h
+keyb.o: ../include/kernel.h ../include/assert.h ../include/stdarg.h
+shell.o: ../include/kernel.h ../include/assert.h ../include/stdarg.h
+train.o: ../include/kernel.h ../include/assert.h ../include/stdarg.h
+pacman.o: ../include/kernel.h ../include/assert.h ../include/stdarg.h
