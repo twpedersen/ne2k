@@ -5,6 +5,7 @@ static WINDOW shell_wnd = {0, 9, 61, 16, 0, 0, 0xDC};
 static WINDOW train_wnd = {0, 0, 80, 8, 0, 0, ' '};
 static WINDOW pacman_wnd = {61, 8, 0, 0, 0, 0, ' '};
 static WINDOW divider_wnd = {0, 8, 80, 1, 0, 0, ' '};
+static WINDOW ne2k_wnd = {65, 0, 15, 3, 0, 2, ' '};
 
 
 
@@ -98,6 +99,11 @@ void process_command(char* command)
 	return;
     }
 
+	if (is_command(command, "macaddr")) {
+		ne2k_print_mac(&ne2k_wnd, &ne2k_phy);
+		return;
+	}
+
     if (is_command(command, "go")) {
 	set_train_speed("4");
 	return;
@@ -122,7 +128,8 @@ void process_command(char* command)
 	wprintf(&shell_wnd, "  - go     make the train go\n");
 	wprintf(&shell_wnd, "  - stop   make the train stop\n");
 	wprintf(&shell_wnd, "  - rev    reverse train direction\n");
-	wprintf(&shell_wnd, "  - train  start train application\n\n");
+	wprintf(&shell_wnd, "  - train  start train application\n");
+	wprintf(&shell_wnd, "  - macaddr  get the MAC address of your NE2K\n\n");
 	return;
     }
     

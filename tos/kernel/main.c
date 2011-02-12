@@ -12,6 +12,7 @@ void kernel_main()
     init_timer();
     init_com();
     init_keyb();
+	init_ne2k();
     init_shell();
 
     while (1);

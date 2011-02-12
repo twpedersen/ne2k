@@ -8,7 +8,7 @@ include ../MakeVars
 
 OBJS = startup.o stdlib.o window.o process.o assert.o mem.o \
        dispatch.o intr.o inout.o ipc.o com.o timer.o \
-       null.o keyb.o shell.o train.o pacman.o
+       null.o keyb.o shell.o train.o pacman.o ne2k.o
 
 %.o: %.s
 	$(CC) $(CC_OPT) -o $@ -c $<

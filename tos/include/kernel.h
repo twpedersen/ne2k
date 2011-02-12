@@ -277,4 +277,23 @@ void init_train(WINDOW* wnd);
 
 void init_pacman(WINDOW* wnd, int num_ghosts);
 
+/*=====>>> ne2k.c <<<=====================================================*/
+
+#define ETH_ALEN	6
+
+struct ne2k_phy {
+	int suff;
+	int more;
+	int firmware;
+	int data;
+	union {
+		unsigned char byte[ETH_ALEN];
+		long long n;
+	} macaddr;
+};
+
+/* everyone has access to the card? */
+struct ne2k_phy ne2k_phy;
+
+void init_ne2k();
 #endif
