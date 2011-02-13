@@ -1,4 +1,4 @@
-/* NE2K driver for the TOS kernel 
+/* NE2K driver for the TOS kernel
  * divya and thomas, csc 720 spring 2011
  */
 #include "kernel.h"
@@ -40,7 +40,6 @@
 #define NE2K_REG_DCR	0x0E
 #define NE2K_REG_IMR	0x0F
 
-
 /* page 1 (PS1,PS0) = (0,1) */
 #define NE2K_REG_PAR0	0x01
 #define NE2K_REG_PAR1	0x02
@@ -69,16 +68,68 @@
 #define NE2K_CMD_PS0	0x40
 #define NE2K_CMD_PS1	0x80
 
-/* turn on ne2k and read data into phy */
+#define NE2K_CMD_P0		0x00
+#define NE2K_CMD_P1		0x40
+
+/* write cmd to given register, specify page in cmd */
+int ne2k_post_cmd(struct ne2k_phy *phy, unsigned char cmd,
+				                        unsigned char reg) {
+
+	outportb(phy->portaddr + reg, cmd);
+	/* check for success? */
+	return 0;
+}
+
+/* read register contents */
+unsigned char ne2k_read_reg(struct ne2k_phy *phy,
+							unsigned char page,
+							unsigned char reg) {
+
+	/* switch to page */
+	ne2k_post_cmd(phy, page, reg);
+	return inportb(phy->portaddr + reg);
+}
+
+int ne2k_start(struct ne2k_phy *phy) {
+
+	unsigned char cmd = 0;
+	cmd = NE2K_CMD_STA;
+	return ne2k_post_cmd(phy, cmd, NE2K_REG_CR);
+}
+
+int ne2k_get_attr(struct ne2k_phy *phy) {
+
+	/* read mac address */
+	int i;
+	for (i = 0; i < ETH_ALEN; i++) {
+		phy->macaddr.byte[i] = ne2k_read_reg(phy, NE2K_CMD_P1, NE2K_REG_PAR0 + i);
+	}
+	return 0;
+}
+
+/* turn on ne2k and fill in phy */
 int ne2k_init(struct ne2k_phy *phy) {
 
+	int err;
+	phy->portaddr = NE2K_BASE_ADDR;
+
 	/* turn on the card */
+	if(err = ne2k_start(phy)) {
+		kprintf("ne2k: failed to bring up interface: %d", err);
+		goto err_out;
+	}
 
 	/* read attributes */
-	ne2k_phy.macaddr.n = 0xDEADBEEFBABE;
+	if (err = ne2k_get_attr(phy)) {
+		kprintf("ne2k: failed to get attributes: %d", err);
+		goto err_out;
+	};
 
 	wprintf(kernel_window, "ne2k loaded");
+
 	return 0;
+err_out:
+	return err;
 }
 
 void ne2k_print_mac(WINDOW* wnd, struct ne2k_phy *phy) {
