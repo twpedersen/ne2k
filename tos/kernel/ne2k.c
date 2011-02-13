@@ -59,17 +59,17 @@
 
 /* register command sets */
 /* command register */
-#define NE2K_CMD_STP	0x01
-#define NE2K_CMD_STA	0x02
-#define NE2K_CMD_TXP	0x04
-#define NE2K_CMD_RD0	0x08
-#define NE2K_CMD_RD1	0x10
-#define NE2K_CMD_RD2	0x20
-#define NE2K_CMD_PS0	0x40
-#define NE2K_CMD_PS1	0x80
+#define NE2K_CMD_STP	1 << 0
+#define NE2K_CMD_STA	1 << 1
+#define NE2K_CMD_TXP	1 << 2
+#define NE2K_CMD_RD0	1 << 3
+#define NE2K_CMD_RD1	1 << 4
+#define NE2K_CMD_RD2	1 << 5
+#define NE2K_CMD_PS0	1 << 6
+#define NE2K_CMD_PS1	1 << 7
 
 #define NE2K_CMD_P0		0x00
-#define NE2K_CMD_P1		0x40
+#define NE2K_CMD_P1		NE2K_CMD_PS0
 
 /* write cmd to given register, specify page in cmd */
 int ne2k_post_cmd(struct ne2k_phy *phy, unsigned char cmd,
@@ -81,28 +81,74 @@ int ne2k_post_cmd(struct ne2k_phy *phy, unsigned char cmd,
 }
 
 /* read register contents */
-unsigned char ne2k_read_reg(struct ne2k_phy *phy,
-							unsigned char page,
+unsigned char ne2k_reg_read(struct ne2k_phy *phy,
 							unsigned char reg) {
 
-	/* switch to page */
-	ne2k_post_cmd(phy, page, reg);
 	return inportb(phy->portaddr + reg);
 }
 
+int ne2k_reg_sw_page(struct ne2k_phy *phy, int pagenum) {
+
+	unsigned char page = NE2K_CMD_STP | NE2K_CMD_RD2;
+	int err;
+
+	switch (pagenum) {
+		case 0:
+			page |= NE2K_CMD_P0;
+			break;
+		case 1:
+			page |= NE2K_CMD_P1;
+			break;
+		default:
+			kprintf("ne2k: page not implemented\n");
+			goto err_out;
+	}
+
+	if (err = ne2k_post_cmd(phy, page, NE2K_REG_CR))
+		goto err_out;
+
+	return 0;
+err_out:
+	return err;
+}
+
+/* the init procedure is described on p. 29 of the datasheet */
 int ne2k_start(struct ne2k_phy *phy) {
 
-	unsigned char cmd = 0;
-	cmd = NE2K_CMD_STA;
-	return ne2k_post_cmd(phy, cmd, NE2K_REG_CR);
+	unsigned char cmd = ne2k_reg_read(phy, NE2K_REG_CR);
+
+	/* 1) switch to page 0 */
+	ne2k_reg_sw_page(phy, 0);
+	/* 2) init DCR */
+	/* 3) clear RBCR0 and RBCR1 */
+	/* 4) init RCR */
+	/* 5) place NIC in loopback mode */
+	/* 6) init recv buffer ring, BNDRY, PSTART, and PSTOP */
+	/* 7) clear ISR */
+	cmd = 0xFF;
+	ne2k_post_cmd(phy, cmd, NE2K_REG_ISR);
+	/* 8) init IMR */
+	/* 9) switch to page 1 and init PAR0-5, MAR0-7, and CURR */
+	/* 10) put NIC in START mode */
+	cmd = NE2K_CMD_STA | NE2K_CMD_RD2;
+	ne2k_post_cmd(phy, cmd, NE2K_REG_CR);
+	/* 11) init TCR */
+	return 0;
 }
 
 int ne2k_get_attr(struct ne2k_phy *phy) {
 
 	/* read mac address */
 	int i;
+	unsigned char mac_reg = NE2K_REG_PAR0;
+	unsigned char page = NE2K_CMD_P1;
+
+	/* switch to page 1 */
+	ne2k_reg_sw_page(phy, 1);
+
 	for (i = 0; i < ETH_ALEN; i++) {
-		phy->macaddr.byte[i] = ne2k_read_reg(phy, NE2K_CMD_P1, NE2K_REG_PAR0 + i);
+		phy->macaddr.byte[i] = ne2k_reg_read(phy, mac_reg);
+		mac_reg *= 2;
 	}
 	return 0;
 }
@@ -138,7 +184,7 @@ void ne2k_print_mac(WINDOW* wnd, struct ne2k_phy *phy) {
 	/* macaddr.n is little-endian, so print it backwards until we have
 	 * a htonl() */
 	for (i = ETH_ALEN; i > 0; i--) {
-		wprintf(wnd, "%X", ne2k_phy.macaddr.byte[i - 1]);
+		wprintf(wnd, "%X", phy->macaddr.byte[i - 1]);
 	}
 }
 
