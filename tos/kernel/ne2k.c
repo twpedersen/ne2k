@@ -70,13 +70,19 @@
 
 #define NE2K_CMD_P0		0x00
 #define NE2K_CMD_P1		NE2K_CMD_PS0
+#define NE2K_CMD_PMSK	0x03 << 6
 
-/* write cmd to given register, specify page in cmd */
-int ne2k_post_cmd(struct ne2k_phy *phy, unsigned char cmd,
-				                        unsigned char reg) {
+/* check these values */
+#define NE2K_ASIC_OFFSET	0x10
+#define NE2K_NOVELL_RESET	0x0F
 
-	outportb(phy->portaddr + reg, cmd);
-	/* check for success? */
+/* these functions seem sort of redundant.. */
+
+/* write byte to given register, switch page before calling this */
+int ne2k_reg_write(struct ne2k_phy *phy, unsigned char reg,
+				                        unsigned char byte) {
+
+	outportb(phy->nicaddr + reg, byte);
 	return 0;
 }
 
@@ -84,9 +90,11 @@ int ne2k_post_cmd(struct ne2k_phy *phy, unsigned char cmd,
 unsigned char ne2k_reg_read(struct ne2k_phy *phy,
 							unsigned char reg) {
 
-	return inportb(phy->portaddr + reg);
+	return inportb(phy->nicaddr + reg);
 }
 
+/* is this function really necessary? also DONT TRUST INITAL CONTENTS OF PAGE
+ * I dont know what I'm doing yet */
 int ne2k_reg_sw_page(struct ne2k_phy *phy, int pagenum) {
 
 	unsigned char page = NE2K_CMD_STP | NE2K_CMD_RD2;
@@ -104,7 +112,7 @@ int ne2k_reg_sw_page(struct ne2k_phy *phy, int pagenum) {
 			goto err_out;
 	}
 
-	if (err = ne2k_post_cmd(phy, page, NE2K_REG_CR))
+	if (err = ne2k_reg_write(phy, page, NE2K_REG_CR))
 		goto err_out;
 
 	return 0;
@@ -112,11 +120,52 @@ err_out:
 	return err;
 }
 
+/* try to detect presence of ne2k at phy->nicaddr, copied from ne2k.c
+ * in sanos (jbox.dk/sanos) */
+static int ne2k_probe(struct ne2k_phy *phy)
+{
+	unsigned char byte;
+
+	/* reset */
+	byte = inportb(phy->asicaddr + NE2K_NOVELL_RESET);
+	outportb(phy->asicaddr + NE2K_NOVELL_RESET, byte);
+	outportb(phy->nicaddr + NE2K_REG_CR, NE2K_CMD_RD2 | NE2K_CMD_STP);
+
+	sleep(50);
+
+	// Test for a generic DP8390 NIC
+	byte = inportb(phy->nicaddr + NE2K_REG_CR);
+	byte &= NE2K_CMD_RD2 | NE2K_CMD_TXP | NE2K_CMD_STA | NE2K_CMD_STP;
+	if (byte != (NE2K_CMD_RD2 | NE2K_CMD_STP)) return 0;
+
+	byte = inportb(phy->nicaddr + NE2K_REG_ISR);
+	byte &= 0x80;	//NE2K_ISR_RST
+	if (byte != 0x80) return 0;
+
+	return 1;
+}
+
+/* print registers for current page */
+void ne2k_reg_hexdump(struct ne2k_phy *phy) {
+
+	int i;
+	int page = ne2k_reg_read(phy, NE2K_REG_CR) & NE2K_CMD_PMSK;
+	page = page >> 6;
+	kprintf("\nne2k page #%d: ", page);
+	for (i = 0; i <= 0x0F; i++) {
+		kprintf("\n%02X ", ne2k_reg_read(phy, i));
+	}
+}
+
 /* the init procedure is described on p. 29 of the datasheet */
 int ne2k_start(struct ne2k_phy *phy) {
 
-	unsigned char cmd = ne2k_reg_read(phy, NE2K_REG_CR);
+	unsigned char cmd;
 
+	if(ne2k_probe(phy))
+		kprintf("ne2k: probe successful");
+
+	ne2k_reg_hexdump(phy);
 	/* 1) switch to page 0 */
 	ne2k_reg_sw_page(phy, 0);
 	/* 2) init DCR */
@@ -125,30 +174,21 @@ int ne2k_start(struct ne2k_phy *phy) {
 	/* 5) place NIC in loopback mode */
 	/* 6) init recv buffer ring, BNDRY, PSTART, and PSTOP */
 	/* 7) clear ISR */
-	cmd = 0xFF;
-	ne2k_post_cmd(phy, cmd, NE2K_REG_ISR);
 	/* 8) init IMR */
 	/* 9) switch to page 1 and init PAR0-5, MAR0-7, and CURR */
 	/* 10) put NIC in START mode */
-	cmd = NE2K_CMD_STA | NE2K_CMD_RD2;
-	ne2k_post_cmd(phy, cmd, NE2K_REG_CR);
 	/* 11) init TCR */
 	return 0;
 }
 
 int ne2k_get_attr(struct ne2k_phy *phy) {
 
-	/* read mac address */
 	int i;
-	unsigned char mac_reg = NE2K_REG_PAR0;
-	unsigned char page = NE2K_CMD_P1;
 
-	/* switch to page 1 */
-	ne2k_reg_sw_page(phy, 1);
-
+	/* this is wrong, we need a DMA to read contents of ROM, then read 
+	 * result into the card's registers */
 	for (i = 0; i < ETH_ALEN; i++) {
-		phy->macaddr.byte[i] = ne2k_reg_read(phy, mac_reg);
-		mac_reg *= 2;
+		phy->macaddr.byte[i] = ne2k_reg_read(phy, NE2K_REG_PAR0 + i);
 	}
 	return 0;
 }
@@ -157,7 +197,8 @@ int ne2k_get_attr(struct ne2k_phy *phy) {
 int ne2k_init(struct ne2k_phy *phy) {
 
 	int err;
-	phy->portaddr = NE2K_BASE_ADDR;
+	phy->nicaddr = NE2K_BASE_ADDR;
+	phy->asicaddr = phy->nicaddr + NE2K_ASIC_OFFSET;
 
 	/* turn on the card */
 	if(err = ne2k_start(phy)) {
@@ -171,8 +212,6 @@ int ne2k_init(struct ne2k_phy *phy) {
 		goto err_out;
 	};
 
-	wprintf(kernel_window, "ne2k loaded");
-
 	return 0;
 err_out:
 	return err;
@@ -184,7 +223,7 @@ void ne2k_print_mac(WINDOW* wnd, struct ne2k_phy *phy) {
 	/* macaddr.n is little-endian, so print it backwards until we have
 	 * a htonl() */
 	for (i = ETH_ALEN; i > 0; i--) {
-		wprintf(wnd, "%X", phy->macaddr.byte[i - 1]);
+		wprintf(wnd, "%02X:", phy->macaddr.byte[i - 1]);
 	}
 }
 

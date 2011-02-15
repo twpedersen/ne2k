@@ -282,7 +282,8 @@ void init_pacman(WINDOW* wnd, int num_ghosts);
 #define ETH_ALEN	6
 
 struct ne2k_phy {
-	unsigned short portaddr;
+	unsigned short nicaddr;
+	unsigned short asicaddr;
 	union {
 		unsigned char byte[ETH_ALEN];
 		long long n;
