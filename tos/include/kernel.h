@@ -284,6 +284,8 @@ void init_pacman(WINDOW* wnd, int num_ghosts);
 struct ne2k_phy {
 	unsigned short nicaddr;
 	unsigned short asicaddr;
+	unsigned short irq;
+	/* we want to put rx / tx ring buffer addresses here */
 	union {
 		unsigned char byte[ETH_ALEN];
 		long long n;
