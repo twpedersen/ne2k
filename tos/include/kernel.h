@@ -230,6 +230,7 @@ void init_timer();
 
 unsigned char inportb (unsigned short port);
 void outportb (unsigned short port, unsigned char value);
+void inportsw(unsigned short port, void *dst, unsigned short n);
 
 
 /*=====>>> com.c <<<=====================================================*/
@@ -295,5 +296,6 @@ struct ne2k_phy {
 /* everyone has access to the card? */
 struct ne2k_phy ne2k_phy;
 
+void ne2k_print_mac();
 void init_ne2k();
 #endif

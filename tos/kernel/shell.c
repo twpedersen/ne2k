@@ -5,7 +5,7 @@ static WINDOW shell_wnd = {0, 9, 61, 16, 0, 0, 0xDC};
 static WINDOW train_wnd = {0, 0, 80, 8, 0, 0, ' '};
 static WINDOW pacman_wnd = {61, 8, 0, 0, 0, 0, ' '};
 static WINDOW divider_wnd = {0, 8, 80, 1, 0, 0, ' '};
-static WINDOW ne2k_wnd = {65, 0, 15, 3, 0, 2, ' '};
+static WINDOW ne2k_wnd = {60, 0, 20, 3, 0, 2, ' '};
 
 
 

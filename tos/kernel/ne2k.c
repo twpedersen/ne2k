@@ -69,6 +69,7 @@
 #define NE2K_CR_PS1	1 << 7
 
 /* data configuration */
+#define NE2K_DCR_WTS	1 << 0
 #define NE2K_DCR_LS		1 << 3
 #define NE2K_DCR_FT1	1 << 6
 
@@ -96,6 +97,7 @@ unsigned short htons(unsigned short s) {
 	return r;
 }
 
+
 /* these functions seem sort of redundant.. */
 
 /* write byte to given register, switch page before calling this */
@@ -115,7 +117,7 @@ unsigned char ne2k_reg_read(struct ne2k_phy *phy,
 
 /* read len number of bytes from NIC buffer memory at src,
  * stolen almost verbatim from sanos */
-void ne2k_read_mem(struct ne2k_phy *phy, unsigned short src, unsigned char *dst,
+void ne2k_read_mem(struct ne2k_phy *phy, unsigned short src, void *dst,
 										 unsigned short len) {
 	/* align words */
 	if (len & 1) len++;
@@ -134,34 +136,30 @@ void ne2k_read_mem(struct ne2k_phy *phy, unsigned short src, unsigned char *dst,
 	ne2k_reg_write(phy, NE2K_REG_CR, NE2K_CR_RD0 | NE2K_CR_STA);
 
 	/* do 16-bit DMA read */
-	
-kprintf("reading %d words @ %X\n", len >> 1, src);
-//int i=0;
-while (len > 0) 
-	{
-		
-		unsigned short d;
-		d=inportb(phy->asicaddr);
-		*dst++ = d;
-
-inportb(phy->asicaddr);
-		len -= 2;
-//	i=i+1;
-	}//	inportw(phy->asicaddr + NE2K_NOVELL_DATA, dst, len >> 1);
+	inportsw(phy->asicaddr, dst, len >> 1);
 }
-/* is this function really necessary? also DONT TRUST INITAL CONTENTS OF PAGE
- * I dont know what I'm doing yet */
+
+/* return current page ne2k is on */
+unsigned char ne2k_reg_get_page(struct ne2k_phy *phy) {
+
+	unsigned char page = ne2k_reg_read(phy, NE2K_REG_CR) & NE2K_CR_PMSK;
+	return page >> 6;
+}
+
+/* is this function really necessary? Performs a safe page switch */
 int ne2k_reg_sw_page(struct ne2k_phy *phy, int pagenum) {
 
-	unsigned char page = NE2K_CR_STP | NE2K_CR_RD2;
+	unsigned char page = ne2k_reg_read(phy, NE2K_REG_CR);
 	int err;
 
 	switch (pagenum) {
 		case 0:
 			page |= NE2K_CR_P0;
+			page &= ~NE2K_CR_P1;
 			break;
 		case 1:
 			page |= NE2K_CR_P1;
+			page &= ~NE2K_CR_P0;
 			break;
 		default:
 			kprintf("ne2k: page not implemented\n");
@@ -176,6 +174,16 @@ err_out:
 	return err;
 }
 
+/* print registers for current page */
+void ne2k_reg_hexdump(struct ne2k_phy *phy) {
+
+	int i;
+	int page = ne2k_reg_get_page(phy);
+	kprintf("\nne2k page #%d: ", page);
+	for (i = 0; i <= 0x0F; i++) {
+		kprintf("\n%02X %02X ", i, ne2k_reg_read(phy, i));
+	}
+}
 /* try to detect presence of ne2k at phy->nicaddr, copied from ne2k.c
  * in sanos (jbox.dk/sanos) */
 static int ne2k_probe(struct ne2k_phy *phy)
@@ -192,40 +200,32 @@ static int ne2k_probe(struct ne2k_phy *phy)
 	// Test for a generic DP8390 NIC
 	byte = inportb(phy->nicaddr + NE2K_REG_CR);
 	byte &= NE2K_CR_RD2 | NE2K_CR_TXP | NE2K_CR_STA | NE2K_CR_STP;
-	if (byte != (NE2K_CR_RD2 | NE2K_CR_STP)) return 0;
+	if (byte != (NE2K_CR_RD2 | NE2K_CR_STP)) return 1;
 
 	byte = inportb(phy->nicaddr + NE2K_REG_ISR);
 	byte &= 0x80;	//NE2K_ISR_RST
-	if (byte != 0x80) return 0;
+	if (byte != 0x80) return 1;
 
-	return 1;
+	return 0;
 }
 
-/* print registers for current page */
-void ne2k_reg_hexdump(struct ne2k_phy *phy) {
-
-	int i;
-	int page = ne2k_reg_read(phy, NE2K_REG_CR) & NE2K_CR_PMSK;
-	page = page >> 6;
-	kprintf("\nne2k page #%d: ", page);
-	for (i = 0; i <= 0x0F; i++) {
-		kprintf("\n%02X ", ne2k_reg_read(phy, i));
-	}
-}
 
 /* the init procedure is described on p. 29 of the datasheet, as well as the
  * driver reference implementation in docs/writingdriversfortheDP8390.pdf */
 int ne2k_start(struct ne2k_phy *phy) {
 
-	unsigned char cmd;
+	int err;
 
-	if(ne2k_probe(phy))
-		kprintf("ne2k: probe successful");
+	if((err = ne2k_probe(phy)))
+		goto err_out;
+
+	kprintf("ne2k: probe successful\n");
 
 	/* 1) stop mode 0x21, abort DMA and stop card */
 	ne2k_reg_write(phy, NE2K_REG_CR, NE2K_CR_RD2 | NE2K_CR_STP);
-	/* 2) init DCR  0x58, FIFO rx threshold == 8 bytes, normal loopback (off) */
-	ne2k_reg_write(phy, NE2K_REG_DCR, NE2K_DCR_FT1 | NE2K_DCR_LS);
+	/* 2) init DCR,  FIFO rx threshold 8 bytes, normal loopback (off),
+	 * and 16-bit wide DMA transfers */
+	ne2k_reg_write(phy, NE2K_REG_DCR, NE2K_DCR_FT1 | NE2K_DCR_LS | NE2K_DCR_WTS);
 	/* 3) clear RBCR0 and RBCR1 */
 	ne2k_reg_write(phy, NE2K_REG_RBCR0, 0x00);
 	ne2k_reg_write(phy, NE2K_REG_RBCR1, 0x00);
@@ -252,19 +252,26 @@ int ne2k_start(struct ne2k_phy *phy) {
 	ne2k_reg_write(phy, NE2K_REG_TCR, 0x00);
 
 	return 0;
+err_out:
+	return err;
 }
 
 int ne2k_get_attr(struct ne2k_phy *phy) {
 
+	/* MAC is stored in 16 bytes, 2 identical bytes per word */
+	char macbuf[16];
 	int i;
+	int page = ne2k_reg_get_page(phy);
+	ne2k_read_mem(phy, NE2K_NOVELL_DATA, (void *) macbuf, 16);
 
-	/* this is wrong, we need a DMA to read contents of ROM, then read 
-	 * result into the card's registers */
-	ne2k_read_mem(phy, 0x00, (void *)phy->macaddr.byte, ETH_ALEN);
-	
-/*for (i = 0; i < ETH_ALEN; i++) {
-		phy->macaddr.byte[i] = ne2k_reg_read(phy, NE2K_REG_PAR0 + i);
-	}*/
+	/* read mac into phy and card registers */
+	ne2k_reg_sw_page(phy, 1);		/* switch back later ? */
+	for (i = 0; i < ETH_ALEN; i++) {
+		phy->macaddr.byte[i] = macbuf[i * 2];
+		/* move this into ne2k_conf() later */
+		ne2k_reg_write(phy, NE2K_REG_PAR0 + i, macbuf[i * 2]);
+	}
+	ne2k_reg_sw_page(phy, page);
 	return 0;
 }
 
@@ -285,7 +292,7 @@ int ne2k_init(struct ne2k_phy *phy) {
 	if (err = ne2k_get_attr(phy)) {
 		kprintf("ne2k: failed to get attributes: %d", err);
 		goto err_out;
-	};
+	}
 
 	return 0;
 err_out:
@@ -295,11 +302,15 @@ err_out:
 void ne2k_print_mac(WINDOW* wnd, struct ne2k_phy *phy) {
 
 	int i;
-	/* macaddr.n is little-endian, so print it backwards until we have
-	 * a htonl() */
 	for (i = 0; i < ETH_ALEN; i++) {
-		wprintf(wnd, "%02X:", phy->macaddr.byte[i]);
+		wprintf(wnd, "%02X", phy->macaddr.byte[i]);
+		if (i != ETH_ALEN - 1)
+			wprintf(wnd, ":");
 	}
+	int page = ne2k_reg_get_page(phy);
+	ne2k_reg_sw_page(phy, 1);
+	ne2k_reg_hexdump(phy);
+	ne2k_reg_sw_page(phy, page);
 }
 
 void ne2k_process(PROCESS self, PARAM param) {
@@ -322,3 +333,4 @@ void init_ne2k() {
 	create_process(ne2k_process, 1, 0, "NE2000");
 	resign();
 }
+>>>>>>> ne2k: DMA reads seem to work.
