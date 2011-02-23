@@ -115,7 +115,7 @@ unsigned char ne2k_reg_read(struct ne2k_phy *phy,
 
 /* read len number of bytes from NIC buffer memory at src,
  * stolen almost verbatim from sanos */
-void ne2k_read_mem(struct ne2k_phy *phy, unsigned short src, void *dst,
+void ne2k_read_mem(struct ne2k_phy *phy, unsigned short src, unsigned char *dst,
 										 unsigned short len) {
 	/* align words */
 	if (len & 1) len++;
@@ -134,8 +134,20 @@ void ne2k_read_mem(struct ne2k_phy *phy, unsigned short src, void *dst,
 	ne2k_reg_write(phy, NE2K_REG_CR, NE2K_CR_RD0 | NE2K_CR_STA);
 
 	/* do 16-bit DMA read */
-	kprintf("reading %d words @ %X\n", len >> 1, src);
-	inportw(phy->asicaddr + NE2K_NOVELL_DATA, dst, len >> 1);
+	
+kprintf("reading %d words @ %X\n", len >> 1, src);
+//int i=0;
+while (len > 0) 
+	{
+		
+		unsigned short d;
+		d=inportb(phy->asicaddr);
+		*dst++ = d;
+
+inportb(phy->asicaddr);
+		len -= 2;
+//	i=i+1;
+	}//	inportw(phy->asicaddr + NE2K_NOVELL_DATA, dst, len >> 1);
 }
 /* is this function really necessary? also DONT TRUST INITAL CONTENTS OF PAGE
  * I dont know what I'm doing yet */
@@ -249,9 +261,10 @@ int ne2k_get_attr(struct ne2k_phy *phy) {
 	/* this is wrong, we need a DMA to read contents of ROM, then read 
 	 * result into the card's registers */
 	ne2k_read_mem(phy, 0x00, (void *)phy->macaddr.byte, ETH_ALEN);
-	for (i = 0; i < ETH_ALEN; i++) {
+	
+/*for (i = 0; i < ETH_ALEN; i++) {
 		phy->macaddr.byte[i] = ne2k_reg_read(phy, NE2K_REG_PAR0 + i);
-	}
+	}*/
 	return 0;
 }
 
@@ -284,8 +297,8 @@ void ne2k_print_mac(WINDOW* wnd, struct ne2k_phy *phy) {
 	int i;
 	/* macaddr.n is little-endian, so print it backwards until we have
 	 * a htonl() */
-	for (i = ETH_ALEN; i > 0; i--) {
-		wprintf(wnd, "%02X:", phy->macaddr.byte[i - 1]);
+	for (i = 0; i < ETH_ALEN; i++) {
+		wprintf(wnd, "%02X:", phy->macaddr.byte[i]);
 	}
 }
 
