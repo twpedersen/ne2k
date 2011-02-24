@@ -235,7 +235,6 @@ void in_s16(unsigned short port, void *dst, unsigned short n);
 void out_s8(void *src, unsigned short port, unsigned short n);
 void out_s16(void *src, unsigned short port, unsigned short n);
 
-
 /*=====>>> com.c <<<=====================================================*/
 
 #define COM1_IRQ    0x64
