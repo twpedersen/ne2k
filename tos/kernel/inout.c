@@ -23,22 +23,22 @@ void outportb (unsigned short port, unsigned char value)
     asm ("outb %b0,%w1" : : "a" (value), "Nd" (port));
 }
 
-void in_s8(unsigned short port, void *dst, unsigned short n)
+void insb(unsigned short port, void *dst, unsigned short n)
 {
 	inouts("insb", port, dst, n);
 }
 
-void in_s16(unsigned short port, void *dst, unsigned short n)
+void insw(unsigned short port, void *dst, unsigned short n)
 {
 	inouts("insw", port, dst, n);
 }
 
-void out_s8(void *src, unsigned short port, unsigned short n)
+void outsb(void *src, unsigned short port, unsigned short n)
 {
 	inouts("outsb", port, src, n);
 }
 
-void out_s16(void *src, unsigned short port, unsigned short n)
+void outsw(void *src, unsigned short port, unsigned short n)
 {
 	inouts("outsw", port, src, n);
 }

@@ -136,7 +136,7 @@ void ne2k_read_mem(struct ne2k_phy *phy, unsigned short src, void *dst,
 	ne2k_reg_write(phy, NE2K_REG_CR, NE2K_CR_RD0 | NE2K_CR_STA);
 
 	/* do 16-bit DMA read */
-	in_s16(phy->asicaddr, dst, len >> 1);
+	insw(phy->asicaddr, dst, len >> 1);
 }
 
 /* return current page ne2k is on */

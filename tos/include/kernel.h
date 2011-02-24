@@ -230,10 +230,10 @@ void init_timer();
 
 unsigned char inportb (unsigned short port);
 void outportb (unsigned short port, unsigned char value);
-void in_s8(unsigned short port, void *dst, unsigned short n);
-void in_s16(unsigned short port, void *dst, unsigned short n);
-void out_s8(void *src, unsigned short port, unsigned short n);
-void out_s16(void *src, unsigned short port, unsigned short n);
+void insb(unsigned short port, void *dst, unsigned short n);
+void insw(unsigned short port, void *dst, unsigned short n);
+void outsb(void *src, unsigned short port, unsigned short n);
+void outsw(void *src, unsigned short port, unsigned short n);
 
 /*=====>>> com.c <<<=====================================================*/
 
