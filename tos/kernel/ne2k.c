@@ -136,7 +136,7 @@ void ne2k_read_mem(struct ne2k_phy *phy, unsigned short src, void *dst,
 	ne2k_reg_write(phy, NE2K_REG_CR, NE2K_CR_RD0 | NE2K_CR_STA);
 
 	/* do 16-bit DMA read */
-	inportsw(phy->asicaddr, dst, len >> 1);
+	in_s16(phy->asicaddr, dst, len >> 1);
 }
 
 /* return current page ne2k is on */
@@ -333,4 +333,3 @@ void init_ne2k() {
 	create_process(ne2k_process, 1, 0, "NE2000");
 	resign();
 }
->>>>>>> ne2k: DMA reads seem to work.
