@@ -90,6 +90,8 @@
 #define NE2K_PAGE_START_ADDR	0x26
 #define NE2K_PAGE_STOP_ADDR		0x40
 
+#define NE2K_IRQ	0x09
+
 unsigned short htons(unsigned short s) {
 	int r;
 	r = s << 8;
@@ -116,6 +118,7 @@ unsigned char ne2k_reg_read(struct ne2k_phy *phy,
 }
 
 /* read len number of bytes from NIC buffer memory at src,
+ * NIC should be initialized and running before calling this.
  * stolen almost verbatim from sanos */
 void ne2k_read_mem(struct ne2k_phy *phy, unsigned short src, void *dst,
 										 unsigned short len) {
@@ -184,6 +187,27 @@ void ne2k_reg_hexdump(struct ne2k_phy *phy) {
 		kprintf("\n%02X %02X ", i, ne2k_reg_read(phy, i));
 	}
 }
+
+void ne2k_handle_irq() {
+
+	kprintf("\n***********IRQ SERVICED!***********");
+
+}
+
+void ne2k_isr() {
+
+	asm ("push %eax; push %ecx; push %edx");
+	asm ("push %ebx; push %ebp; push %esi; push %edi");
+
+	ne2k_handle_irq();
+
+	asm ("movb $0x20,%al");
+	asm ("outb %al,$0x20");
+	asm ("pop %edi; pop %esi; pop %ebp; pop %ebx");
+	asm ("pop %edx; pop %ecx; pop %eax");
+	asm ("iret");
+}
+
 /* try to detect presence of ne2k at phy->nicaddr, copied from ne2k.c
  * in sanos (jbox.dk/sanos) */
 static int ne2k_probe(struct ne2k_phy *phy)
@@ -251,6 +275,9 @@ int ne2k_start(struct ne2k_phy *phy) {
 	/* 11) init TCR in normal mode */
 	ne2k_reg_write(phy, NE2K_REG_TCR, 0x00);
 
+	/* install interrupt handler */
+	init_idt_entry(NE2K_IRQ + 0x60, ne2k_isr);
+
 	return 0;
 err_out:
 	return err;
@@ -298,6 +325,7 @@ int ne2k_init(struct ne2k_phy *phy) {
 err_out:
 	return err;
 }
+
 
 void ne2k_print_mac(WINDOW* wnd, struct ne2k_phy *phy) {
 
