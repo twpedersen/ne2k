@@ -1,3 +1,5 @@
+#include <kernel.h>
+
 #define inouts(cmd, port, mem, n)	\
 	__asm__ __volatile__ (	\
 			"cld\n\t"	\
@@ -7,7 +9,6 @@
 			: "c" (n), "d" (port), "D" (mem)	\
 			: "cc");	\
 
-#include <kernel.h>
 
 unsigned char inportb (unsigned short port)
 {

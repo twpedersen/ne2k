@@ -190,7 +190,7 @@ void isr_timer ()
 	/* Add event handler to ready queue */
 	add_ready_queue (p);
     }
-    
+
     /* Dispatch new process */
     active_proc = dispatcher();
 
@@ -236,7 +236,7 @@ void isr_com1 ()
 
     if ((p = interrupt_table[COM1_IRQ]) == NULL)
 	panic ("service_intr_0x64: Spurious interrupt");
-    
+
     if (p->state != STATE_INTR_BLOCKED)
 	panic ("service_intr_0x64: No process waiting");
 
@@ -380,7 +380,7 @@ void init_interrupts()
     int i;
 
     assert (sizeof (IDT) == IDT_ENTRY_SIZE);
-    
+
     load_idt (idt);
 
     for (i = 0; i < MAX_INTERRUPTS; i++)
@@ -406,9 +406,10 @@ void init_interrupts()
     init_idt_entry (TIMER_IRQ, isr_timer);
     init_idt_entry (COM1_IRQ, isr_com1);
     init_idt_entry (KEYB_IRQ, isr_keyb);
-    
+	init_idt_entry (NE2K_IRQ, ne2k_isr);
+
     re_program_interrupt_controller();
-    
+
     for (i = 0; i < MAX_INTERRUPTS; i++)
 	interrupt_table [i] = NULL;
     interrupts_initialized = TRUE;

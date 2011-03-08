@@ -59,36 +59,66 @@
 
 /* register command sets */
 /* command register */
-#define NE2K_CR_STP	1 << 0
-#define NE2K_CR_STA	1 << 1
-#define NE2K_CR_TXP	1 << 2
-#define NE2K_CR_RD0	1 << 3
-#define NE2K_CR_RD1	1 << 4
-#define NE2K_CR_RD2	1 << 5
-#define NE2K_CR_PS0	1 << 6
-#define NE2K_CR_PS1	1 << 7
+#define NE2K_CR_STP	0x01
+#define NE2K_CR_STA	0x02
+#define NE2K_CR_TXP	0x04
+#define NE2K_CR_RD0	0x08
+#define NE2K_CR_RD1	0x10
+#define NE2K_CR_RD2	0x20
+#define NE2K_CR_PS0	0x40
+#define NE2K_CR_PS1	0x80
 
 /* data configuration */
-#define NE2K_DCR_WTS	1 << 0
-#define NE2K_DCR_LS		1 << 3
-#define NE2K_DCR_FT1	1 << 6
+#define NE2K_DCR_WTS	0x01
+#define NE2K_DCR_LS		0x08
+#define NE2K_DCR_FT1	0x40
+
+/* receive configuration register */
+#define NE2K_RCR_SEP	0x01
+#define NE2K_RCR_AR		0x02
+#define NE2K_RCR_AB		0x04
+#define NE2K_RCR_AM		0x08
+#define NE2K_RCR_PRO	0x10
+#define NE2K_RCR_MON	0x20
 
 /* transmission control */
-#define NE2K_TCR_LB0	1 << 1
+#define NE2K_TCR_LB0	0x02
+#define NE2K_TCR_LB1	0x04
 
-#define NE2K_CR_P0		0x00
-#define NE2K_CR_P1		NE2K_CR_PS0
-#define NE2K_CR_PMSK	0x03 << 6
+//
+// Interrupt Status Register (ISR)
+//
+
+#define NE2K_ISR_PRX      0x01           // Packet Received
+#define NE2K_ISR_PTX      0x02           // Packet Transmitted
+#define NE2K_ISR_RXE      0x04           // Receive Error
+#define NE2K_ISR_TXE      0x08           // Transmission Error
+#define NE2K_ISR_OVW      0x10           // Overwrite
+#define NE2K_ISR_CNT      0x20           // Counter Overflow
+#define NE2K_ISR_RDC      0x40           // Remote Data Complete
+#define NE2K_ISR_RST      0x80           // Reset status
+
+//
+// Interrupt Mask Register (IMR)
+
+#define NE2K_IMR_PRXE     0x01           // Packet Received Interrupt Enable
+#define NE2K_IMR_PTXE     0x02           // Packet Transmit Interrupt Enable
+#define NE2K_IMR_RXEE     0x04           // Receive Error Interrupt Enable
+#define NE2K_IMR_TXEE     0x08           // Transmit Error Interrupt Enable
+#define NE2K_IMR_OVWE     0x10           // Overwrite Error Interrupt Enable
+#define NE2K_IMR_CNTE     0x20           // Counter Overflow Interrupt Enable
+#define NE2K_IMR_RDCE     0x40           // Remote DMA Complete Interrupt Enable
 
 /* check these values */
 #define NE2K_ASIC_OFFSET	0x10
 #define NE2K_NOVELL_RESET	0x0F
 #define NE2K_NOVELL_DATA	0x00
 
+#define NE2K_PAGE_SIZE		0x100
 /* local buffer usage (high bytes) */
-#define NE2K_TXPAGE_START		0x20
-#define NE2K_PAGE_START_ADDR	0x26
-#define NE2K_PAGE_STOP_ADDR		0x40
+#define NE2K_TXPAGE_START	0x20
+#define NE2K_PSTART			0x40
+#define NE2K_PSTOP			0x54
 
 #define NE2K_IRQ	0x09
 
@@ -98,7 +128,6 @@ unsigned short htons(unsigned short s) {
 	r |= s >> 8;
 	return r;
 }
-
 
 /* these functions seem sort of redundant.. */
 
@@ -119,11 +148,12 @@ unsigned char ne2k_reg_read(struct ne2k_phy *phy,
 
 /* read len number of bytes from NIC buffer memory at src,
  * NIC should be initialized and running before calling this.
- * stolen almost verbatim from sanos */
+ * stolen almost verbatim from sanos, src should be word-aligned */
 void ne2k_read_mem(struct ne2k_phy *phy, unsigned short src, void *dst,
 										 unsigned short len) {
 	/* align words */
 	if (len & 1) len++;
+
 	/* finish DMA */
 	ne2k_reg_write(phy, NE2K_REG_CR, NE2K_CR_RD2 | NE2K_CR_STA);
 
@@ -145,11 +175,11 @@ void ne2k_read_mem(struct ne2k_phy *phy, unsigned short src, void *dst,
 /* return current page ne2k is on */
 unsigned char ne2k_reg_get_page(struct ne2k_phy *phy) {
 
-	unsigned char page = ne2k_reg_read(phy, NE2K_REG_CR) & NE2K_CR_PMSK;
+	unsigned char page = ne2k_reg_read(phy, NE2K_REG_CR);
 	return page >> 6;
 }
 
-/* is this function really necessary? Performs a safe page switch */
+/* Performs a safe page switch, card is always in page 0 under normal operation  */
 int ne2k_reg_sw_page(struct ne2k_phy *phy, int pagenum) {
 
 	unsigned char page = ne2k_reg_read(phy, NE2K_REG_CR);
@@ -157,12 +187,16 @@ int ne2k_reg_sw_page(struct ne2k_phy *phy, int pagenum) {
 
 	switch (pagenum) {
 		case 0:
-			page |= NE2K_CR_P0;
-			page &= ~NE2K_CR_P1;
+			page &= ~NE2K_CR_PS0;
+			page &= ~NE2K_CR_PS1;
 			break;
 		case 1:
-			page |= NE2K_CR_P1;
-			page &= ~NE2K_CR_P0;
+			page |= NE2K_CR_PS0;
+			page &= ~NE2K_CR_PS1;
+			break;
+		case 2:
+			page &= ~NE2K_CR_PS0;
+			page |= NE2K_CR_PS1;
 			break;
 		default:
 			kprintf("ne2k: page not implemented\n");
@@ -188,10 +222,92 @@ void ne2k_reg_hexdump(struct ne2k_phy *phy) {
 	}
 }
 
+/* read pending packets off rx ring */
+void ne2k_rx() {
+
+	struct recv_ring_desc rx_hdr;
+	unsigned short len;
+	unsigned short pkt_ptr = ne2k_phy.next_pkt * NE2K_PAGE_SIZE;
+
+	/* all the info we need is in the first 4 bytes of packet */
+	kprintf("reading at: %02X\n", pkt_ptr);
+	ne2k_read_mem(&ne2k_phy, pkt_ptr, &rx_hdr, sizeof(rx_hdr));
+	kprintf("next_pkt: %04X\n", rx_hdr.next_pkt);
+	kprintf("count: %02X\n", rx_hdr.count);
+	kprintf("rsr: %02X\n", rx_hdr.rsr);
+	len = rx_hdr.count - 4;
+
+	/* finish DMA..? */
+	//ne2k_reg_write(&ne2k_phy, NE2K_REG_CR, NE2K_CR_RD2 | NE2K_CR_STA);
+
+	/* should be getting length of packet first and then calculate head,*/
+	nlb.head = 0;
+	nlb.len = len;
+	kprintf("LEN: %d\n", len);
+	nlb.tail = nlb.head + nlb.len;
+	ne2k_read_mem(&ne2k_phy, pkt_ptr, (void *)&(nlb.payload[nlb.head]), len);
+
+	/* update pointers */
+	/*
+	bndry = ne2k_phy.next_pkt - 1;
+	if (bndry < NE2K_PSTART)
+		ne2k_reg_write(&ne2k_phy, NE2K_REG_BNRY, NE2K_PSTOP - 1);
+	else
+		ne2k_reg_write(&ne2k_phy, NE2K_REG_BNRY, ne2k_phy.next_pkt - 1);
+		*/
+}
+
 void ne2k_handle_irq() {
 
-	kprintf("\n***********IRQ SERVICED!***********");
+	volatile unsigned char isr;
 
+	do {
+		kprintf("handling irqs\n");
+
+		/* packet ready for rx */
+		if (isr & NE2K_ISR_PRX) {
+			kprintf("packet received");
+
+			/* reset interrupt */
+			ne2k_reg_write(&ne2k_phy, NE2K_REG_ISR, NE2K_ISR_PRX);
+		    ne2k_rx();
+		}
+
+		/* packet txed */
+		if (isr & NE2K_ISR_PTX) {
+			kprintf("Packet transmitted");
+
+			/* reset interrupt */
+			ne2k_reg_write(&ne2k_phy, NE2K_REG_ISR, NE2K_ISR_PTX);
+		}
+
+		/* pkt tx error */
+		if (isr & NE2K_ISR_TXE) {
+			kprintf("packet tx error");
+
+			/* reset interrupt */
+			ne2k_reg_write(&ne2k_phy, NE2K_REG_ISR, NE2K_ISR_TXE);
+		}
+
+		/* remote DMA complete */
+		if (isr & NE2K_ISR_RDC) {
+			kprintf("Remote DMA Completed");
+			int i;
+			for(i = nlb.head; i < nlb.tail; i++) {
+				if (i % 16 == 0) kprintf("\n");
+				kprintf("%02X", nlb.payload[i]);
+			}
+
+			/* reset interrupt and set DMA complete */
+			ne2k_reg_write(&ne2k_phy, NE2K_REG_CR, NE2K_CR_RD2 | NE2K_CR_STA);
+			ne2k_reg_write(&ne2k_phy, NE2K_REG_ISR, NE2K_ISR_RDC);
+		}
+
+		isr = ne2k_reg_read(&ne2k_phy, NE2K_REG_ISR);
+		kprintf("isr: %d", isr);
+	} while (isr);
+
+	kprintf("\n***********IRQ SERVICED!***********");
 }
 
 void ne2k_isr() {
@@ -227,8 +343,8 @@ static int ne2k_probe(struct ne2k_phy *phy)
 	if (byte != (NE2K_CR_RD2 | NE2K_CR_STP)) return 1;
 
 	byte = inportb(phy->nicaddr + NE2K_REG_ISR);
-	byte &= 0x80;	//NE2K_ISR_RST
-	if (byte != 0x80) return 1;
+	byte &= NE2K_ISR_RST;
+	if (byte != NE2K_ISR_RST) return 1;
 
 	return 0;
 }
@@ -238,68 +354,71 @@ static int ne2k_probe(struct ne2k_phy *phy)
  * driver reference implementation in docs/writingdriversfortheDP8390.pdf */
 int ne2k_start(struct ne2k_phy *phy) {
 
+	unsigned char macbuf[16];
+	int i;
 	int err;
 
-	if((err = ne2k_probe(phy)))
+	if ((err = ne2k_probe(phy)))
 		goto err_out;
 
 	kprintf("ne2k: probe successful\n");
 
 	/* 1) stop mode 0x21, abort DMA and stop card */
 	ne2k_reg_write(phy, NE2K_REG_CR, NE2K_CR_RD2 | NE2K_CR_STP);
+
 	/* 2) init DCR,  FIFO rx threshold 8 bytes, normal loopback (off),
 	 * and 16-bit wide DMA transfers */
 	ne2k_reg_write(phy, NE2K_REG_DCR, NE2K_DCR_FT1 | NE2K_DCR_LS | NE2K_DCR_WTS);
+
+	/* get mac */
+	ne2k_read_mem(phy, NE2K_NOVELL_DATA, (void *) macbuf, 16);
+	for (i = 0; i < ETH_ALEN; i++)
+		phy->macaddr.byte[i] = macbuf[i * 2];
+	ne2k_reg_write(phy, NE2K_REG_CR, NE2K_CR_RD2 | NE2K_CR_STP);
+
 	/* 3) clear RBCR0 and RBCR1 */
 	ne2k_reg_write(phy, NE2K_REG_RBCR0, 0x00);
 	ne2k_reg_write(phy, NE2K_REG_RBCR1, 0x00);
-	/* 4) init rx configuration register */
-	ne2k_reg_write(phy, NE2K_REG_RCR, 0x00);
+
+	/* 4) init rx configuration register, accept bcast */
+	ne2k_reg_write(phy, NE2K_REG_RCR, NE2K_RCR_AB | NE2K_RCR_AR);
+
 	/* 5) place NIC in internal loopback mode 1 */
 	ne2k_reg_write(phy, NE2K_REG_TCR, NE2K_TCR_LB0);
+
 	/* set tx buffer page start addr */
 	ne2k_reg_write(phy, NE2K_REG_TPSR, NE2K_TXPAGE_START);
+
 	/* 6) init recv buffer ring, BNRY, PSTART, and PSTOP */
-	ne2k_reg_write(phy, NE2K_REG_PSTART, NE2K_PAGE_START_ADDR);
-	ne2k_reg_write(phy, NE2K_REG_BNRY, NE2K_PAGE_START_ADDR);
-	ne2k_reg_write(phy, NE2K_REG_PSTOP, NE2K_PAGE_STOP_ADDR);
+	ne2k_reg_write(phy, NE2K_REG_PSTART, phy->rx_pstart);
+	ne2k_reg_write(phy, NE2K_REG_BNRY, phy->rx_pstart);
+	ne2k_reg_write(phy, NE2K_REG_PSTOP, phy->rx_pstop);
+
 	/* 7) clear ISR */
 	ne2k_reg_write(phy, NE2K_REG_ISR, 0xFF);
+
 	/* 8) init IMR */
-	ne2k_reg_write(phy, NE2K_REG_IMR, 0x0B);
+	ne2k_reg_write(phy, NE2K_REG_IMR, NE2K_IMR_RDCE | NE2K_IMR_TXEE | NE2K_IMR_PTXE | NE2K_IMR_PRXE);
+
 	/* 9) switch to page 1 and init PAR0-5, MAR0-7, and CURR */
 	ne2k_reg_sw_page(phy, 1);
-	ne2k_reg_write(phy, NE2K_REG_CURR, NE2K_PAGE_START_ADDR);
+	/* write mac */
+	for (i = 0; i < ETH_ALEN; i++)
+		ne2k_reg_write(phy, NE2K_REG_PAR0 + i, phy->macaddr.byte[i]);
+	ne2k_reg_write(phy, NE2K_REG_CURR, phy->next_pkt);
+
 	/* 10) put NIC in START mode, back in page 0 */
 	ne2k_reg_write(phy, NE2K_REG_CR, NE2K_CR_RD2 | NE2K_CR_STA);
+
 	/* 11) init TCR in normal mode */
 	ne2k_reg_write(phy, NE2K_REG_TCR, 0x00);
 
 	/* install interrupt handler */
-	init_idt_entry(NE2K_IRQ + 0x60, ne2k_isr);
+	//init_idt_entry(NE2K_IRQ + 0x60, ne2k_isr);
 
 	return 0;
 err_out:
 	return err;
-}
-
-int ne2k_get_attr(struct ne2k_phy *phy) {
-
-	/* MAC is stored in 16 bytes, 2 identical bytes per word */
-	char macbuf[16];
-	int i;
-	int page = ne2k_reg_get_page(phy);
-	ne2k_read_mem(phy, NE2K_NOVELL_DATA, (void *) macbuf, 16);
-
-	/* read mac into phy and card registers */
-	ne2k_reg_sw_page(phy, 1);		/* switch back later ? */
-	for (i = 0; i < ETH_ALEN; i++) {
-		phy->macaddr.byte[i] = macbuf[i * 2];
-		/* move this into ne2k_conf() later */
-		ne2k_reg_write(phy, NE2K_REG_PAR0 + i, macbuf[i * 2]);
-	}
-	ne2k_reg_sw_page(phy, page);
-	return 0;
 }
 
 /* turn on ne2k and fill in phy */
@@ -309,17 +428,20 @@ int ne2k_init(struct ne2k_phy *phy) {
 	phy->nicaddr = NE2K_BASE_ADDR;
 	phy->asicaddr = phy->nicaddr + NE2K_ASIC_OFFSET;
 
+	/* rx ring */
+	phy->rx_pstart = NE2K_PSTART;
+	phy->rx_pstop = NE2K_PSTOP;
+	phy->rx_start = phy->rx_pstart * NE2K_PAGE_SIZE;
+	phy->rx_stop = phy->rx_pstop * NE2K_PAGE_SIZE;
+
+	phy->next_pkt = phy->rx_pstart + 1;
+
 	/* turn on the card */
 	if(err = ne2k_start(phy)) {
 		kprintf("ne2k: failed to bring up interface: %d", err);
 		goto err_out;
 	}
 
-	/* read attributes */
-	if (err = ne2k_get_attr(phy)) {
-		kprintf("ne2k: failed to get attributes: %d", err);
-		goto err_out;
-	}
 
 	return 0;
 err_out:
@@ -335,10 +457,12 @@ void ne2k_print_mac(WINDOW* wnd, struct ne2k_phy *phy) {
 		if (i != ETH_ALEN - 1)
 			wprintf(wnd, ":");
 	}
+
 	int page = ne2k_reg_get_page(phy);
-	ne2k_reg_sw_page(phy, 1);
+	ne2k_reg_sw_page(phy, 2);
 	ne2k_reg_hexdump(phy);
 	ne2k_reg_sw_page(phy, page);
+	//ne2k_reg_hexdump(phy);
 }
 
 void ne2k_process(PROCESS self, PARAM param) {
