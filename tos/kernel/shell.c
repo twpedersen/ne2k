@@ -12,12 +12,12 @@ static WINDOW ne2k_wnd = {60, 0, 20, 3, 0, 2, ' '};
 void run_train_app(WINDOW* wnd)
 {
     static int already_run = 0;
-    
+
     if (already_run) {
 	wprintf(&shell_wnd, "Train application already running.\n\n");
 	return;
     }
-    
+
     already_run = 1;
     init_train(wnd);
 }
@@ -26,12 +26,12 @@ void run_train_app(WINDOW* wnd)
 void run_pacman_app(WINDOW* wnd)
 {
     static int already_run = 0;
-    
+
     if (already_run) {
 	wprintf(&shell_wnd, "PacMan already running.\n\n");
 	return;
     }
-    
+
     already_run = 1;
     init_pacman(wnd, 4);
 }
@@ -43,7 +43,7 @@ void read_line(char* buffer, int max_len)
     Keyb_Message msg;
     char ch;
     int i = 0;
-    
+
     while (1) {
 	msg.key_buffer = &ch;
 	send (keyb_port, &msg);
@@ -83,7 +83,7 @@ void process_command(char* command)
 	print_all_processes(&shell_wnd);
 	return;
     }
-    
+
     if (is_command(command, "clear")) {
 	clear_window(&shell_wnd);
 	return;
@@ -100,7 +100,7 @@ void process_command(char* command)
     }
 
 	if (is_command(command, "macaddr")) {
-		ne2k_print_mac(&ne2k_wnd, &ne2k_phy);
+		ne2k_print_mac(&ne2k_wnd);
 		return;
 	}
 
@@ -108,17 +108,17 @@ void process_command(char* command)
 	set_train_speed("4");
 	return;
     }
-    
+
     if (is_command(command, "stop")) {
 	set_train_speed("0");
 	return;
     }
-    
+
     if (is_command(command, "rev")) {
 	set_train_speed("D");
 	return;
     }
-    
+
     if (is_command(command, "help")) {
 	wprintf(&shell_wnd, "Commands:\n");
 	wprintf(&shell_wnd, "  - help   show this help\n");
@@ -132,7 +132,7 @@ void process_command(char* command)
 	wprintf(&shell_wnd, "  - macaddr  get the MAC address of your NE2K\n\n");
 	return;
     }
-    
+
     /* Room for more commands! */
     wprintf(&shell_wnd, "Syntax error! Type 'help' for help.\n");
 }
@@ -156,7 +156,7 @@ void shell_process(PROCESS self, PARAM param)
 
     wprintf(&shell_wnd, "TOS Shell\n");
     wprintf(&shell_wnd, "---------\n\n");
-    
+
     while (1) {
 	print_prompt();
 	read_line(buffer, 80);

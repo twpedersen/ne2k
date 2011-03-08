@@ -281,61 +281,10 @@ void init_train(WINDOW* wnd);
 void init_pacman(WINDOW* wnd, int num_ghosts);
 
 /*=====>>> ne2k.c <<<=====================================================*/
-
-#define ETH_ALEN	6
-#define NE2K_IRQ	0x69
-
-/* refactor most of this into include/ndd.h eventually */
-struct recv_ring_desc {
-  unsigned char rsr;                   // Receiver status
-  unsigned char next_pkt;              // Pointer to next packet
-  unsigned short count;                // Bytes in packet (length + 4)
-};
-
-struct ne2k_phy {
-	unsigned short nicaddr;
-	unsigned short asicaddr;
-	unsigned short irq;
-	union {
-		unsigned char byte[ETH_ALEN];
-		long long n;
-	} macaddr;
-
-	/* rx / tx ring buffers */
-	/* 256 byte page offsets */
-	unsigned char rx_pstart;
-	unsigned char rx_pstop;
-	/* ring start / stop address */
-	unsigned short rx_start;
-	unsigned short rx_stop;
-	/* next packet in rx ring ptr */
-	unsigned char next_pkt;
-};
-
-/* everyone has access to the card? */
-struct ne2k_phy ne2k_phy;
+#define NE2K_IRQ 0x69
 
 void ne2k_print_mac();
 void init_ne2k();
 void ne2k_isr();
-
-#define NLL_MAX_PKT_LEN     1500    /* max mtu for now until we figure out how to handle fragmentation */
-
-/* network layer buffer, used to pass data and meta information between layers */
-struct __attribute__ ((__packed__)) nl_b {
-    struct txinfo *info;
-    unsigned char payload[NLL_MAX_PKT_LEN];
-    int head; /* grows down */
-    int tail; /* grows up */
-    int len;
-};
-
-struct nl_b nlb;
-/* init nlb as follows:
- * b->head = NLL_MAX_PKT_LEN / 2;
- * b->tail = b->head;
- * b->len = 0;
- */
-void nl_b_init(struct nl_b *b);
 
 #endif

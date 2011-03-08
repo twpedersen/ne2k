@@ -2,6 +2,7 @@
  * divya and thomas, csc 720 spring 2011
  */
 #include "kernel.h"
+#include "ndd.h"
 
 #define NE2K_BASE_ADDR	0x300
 
@@ -120,8 +121,6 @@
 #define NE2K_PSTART			0x40
 #define NE2K_PSTOP			0x54
 
-#define NE2K_IRQ	0x09
-
 unsigned short htons(unsigned short s) {
 	int r;
 	r = s << 8;
@@ -232,7 +231,7 @@ void ne2k_rx() {
 	/* all the info we need is in the first 4 bytes of packet */
 	kprintf("reading at: %02X\n", pkt_ptr);
 	ne2k_read_mem(&ne2k_phy, pkt_ptr, &rx_hdr, sizeof(rx_hdr));
-	kprintf("next_pkt: %04X\n", rx_hdr.next_pkt);
+	kprintf("next_pkt: %02X\n", rx_hdr.next_pkt);
 	kprintf("count: %02X\n", rx_hdr.count);
 	kprintf("rsr: %02X\n", rx_hdr.rsr);
 	len = rx_hdr.count - 4;
@@ -373,7 +372,7 @@ int ne2k_start(struct ne2k_phy *phy) {
 	/* get mac */
 	ne2k_read_mem(phy, NE2K_NOVELL_DATA, (void *) macbuf, 16);
 	for (i = 0; i < ETH_ALEN; i++)
-		phy->macaddr.byte[i] = macbuf[i * 2];
+		phy->macaddr[i] = macbuf[i * 2];
 	ne2k_reg_write(phy, NE2K_REG_CR, NE2K_CR_RD2 | NE2K_CR_STP);
 
 	/* 3) clear RBCR0 and RBCR1 */
@@ -404,7 +403,7 @@ int ne2k_start(struct ne2k_phy *phy) {
 	ne2k_reg_sw_page(phy, 1);
 	/* write mac */
 	for (i = 0; i < ETH_ALEN; i++)
-		ne2k_reg_write(phy, NE2K_REG_PAR0 + i, phy->macaddr.byte[i]);
+		ne2k_reg_write(phy, NE2K_REG_PAR0 + i, phy->macaddr[i]);
 	ne2k_reg_write(phy, NE2K_REG_CURR, phy->next_pkt);
 
 	/* 10) put NIC in START mode, back in page 0 */
@@ -449,11 +448,12 @@ err_out:
 }
 
 
-void ne2k_print_mac(WINDOW* wnd, struct ne2k_phy *phy) {
+void ne2k_print_mac(WINDOW* wnd) {
 
+	struct ne2k_phy *phy = &ne2k_phy;
 	int i;
 	for (i = 0; i < ETH_ALEN; i++) {
-		wprintf(wnd, "%02X", phy->macaddr.byte[i]);
+		wprintf(wnd, "%02X", phy->macaddr[i]);
 		if (i != ETH_ALEN - 1)
 			wprintf(wnd, ":");
 	}
