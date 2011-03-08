@@ -115,11 +115,12 @@
 #define NE2K_NOVELL_RESET	0x0F
 #define NE2K_NOVELL_DATA	0x00
 
+/* local buffer usage (high bytes),
+ * assume 32KB of local ram */
+#define NE2K_TXPSTART		0x40
+#define NE2K_PSTART			0x60
+#define NE2K_PSTOP			0x74
 #define NE2K_PAGE_SIZE		0x100
-/* local buffer usage (high bytes) */
-#define NE2K_TXPAGE_START	0x20
-#define NE2K_PSTART			0x40
-#define NE2K_PSTOP			0x54
 
 unsigned short htons(unsigned short s) {
 	int r;
@@ -386,7 +387,7 @@ int ne2k_start(struct ne2k_phy *phy) {
 	ne2k_reg_write(phy, NE2K_REG_TCR, NE2K_TCR_LB0);
 
 	/* set tx buffer page start addr */
-	ne2k_reg_write(phy, NE2K_REG_TPSR, NE2K_TXPAGE_START);
+	ne2k_reg_write(phy, NE2K_REG_TPSR, NE2K_TXPSTART);
 
 	/* 6) init recv buffer ring, BNRY, PSTART, and PSTOP */
 	ne2k_reg_write(phy, NE2K_REG_PSTART, phy->rx_pstart);
