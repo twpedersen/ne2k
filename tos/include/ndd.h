@@ -46,7 +46,7 @@ void nl_b_init(struct nl_b *b);
 /* nlb manipulation functions */
 /* update head, tail, and len.
  * returns an error on doing something illegal,
- * 0 <= head <= tail < len
+ * 0 <= head <= tail < NLL_MAX_PKT_LEN
  * do we have some
  * errors #defined someplace in tos?
  */

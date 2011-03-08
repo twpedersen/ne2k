@@ -135,9 +135,7 @@ unsigned short htons(unsigned short s) {
 	return r;
 }
 
-/* these functions seem sort of redundant.. */
-
-/* write byte to given register, switch page before calling this */
+/* write byte to given register */
 int ne2k_reg_write(struct ne2k_phy *phy, unsigned char reg,
 				                        unsigned char byte) {
 
@@ -154,7 +152,7 @@ unsigned char ne2k_reg_read(struct ne2k_phy *phy,
 
 /* read len number of bytes from NIC buffer memory at src,
  * NIC should be initialized and running before calling this.
- * stolen almost verbatim from sanos, src should be word-aligned */
+ * src should be word-aligned, stolen from sanos */
 void ne2k_read_mem(struct ne2k_phy *phy, unsigned short src, void *dst,
 										 unsigned short len) {
 	/* align words */
@@ -185,7 +183,7 @@ unsigned char ne2k_reg_get_page(struct ne2k_phy *phy) {
 	return page >> 6;
 }
 
-/* Performs a safe page switch, card is always in page 0 under normal operation  */
+/* Performs a safe page switch */
 int ne2k_reg_sw_page(struct ne2k_phy *phy, int pagenum) {
 
 	unsigned char page = ne2k_reg_read(phy, NE2K_REG_CR);
@@ -453,7 +451,6 @@ int ne2k_init(struct ne2k_phy *phy) {
 err_out:
 	return err;
 }
-
 
 void ne2k_print_mac(WINDOW* wnd) {
 
