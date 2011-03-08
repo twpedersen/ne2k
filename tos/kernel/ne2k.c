@@ -115,12 +115,18 @@
 #define NE2K_NOVELL_RESET	0x0F
 #define NE2K_NOVELL_DATA	0x00
 
-/* local buffer usage (high bytes),
+/* local RAM usage (high bytes),
  * assume 32KB of local ram */
-#define NE2K_TXPSTART		0x40
-#define NE2K_PSTART			0x60
-#define NE2K_PSTOP			0x74
 #define NE2K_PAGE_SIZE		0x100
+/* our pages start here */
+#define NE2K_MEMBASE		16 * 1024
+#define NE2K_MEMSIZE		16 * 1024
+#define NE2K_TX_SIZE		6
+#define NE2K_TX_BUFS		2
+#define NE2K_PSTART			NE2K_MEMBASE / NE2K_PAGE_SIZE
+#define NE2K_PSTOP			NE2K_PSTART + NE2K_MEMSIZE / NE2K_PAGE_SIZE - NE2K_TX_SIZE + NE2K_TX_BUFS
+#define NE2K_TXPSTART		NE2K_PSTOP
+
 
 unsigned short htons(unsigned short s) {
 	int r;
