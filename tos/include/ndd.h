@@ -55,8 +55,16 @@ int nl_b_del_head(struct nl_b *nlb, int len);
 int nl_b_add_tail(struct nl_b *nlb, int len);
 int nl_b_del_tail(struct nl_b *nlb, int len);
 
-
 /************ NDD.H *****************/
+/* for nll */
+/* fill in  buffer allocated by caller w/ MAC address of nic (nl will
+only ever have 1 card :( */
+void ndd_getmac(MACAddress mac);
+
+/* send nlb over the network. At least nlb->info.mac_hdr, nlb->head, nlb->tail,
+and nlb->len have been filled out.*/
+void ndd_send(struct nl_b *nlb);
+
 struct recv_ring_desc {
   unsigned char rsr;                   // Receiver status
   unsigned char next_pkt;              // Pointer to next packet
