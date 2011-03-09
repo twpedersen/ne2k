@@ -103,6 +103,19 @@ void process_command(char* command)
 		ne2k_print_mac(&ne2k_wnd);
 		return;
 	}
+	
+	if(is_command(command, "stop_pktdump")){
+		int enabled=0;
+		ne2k_enable_pktdump(enabled);
+		return;
+	}
+	if(is_command(command, "start_pktdump")){
+		int enabled =1;
+		ne2k_enable_pktdump(enabled);
+		return;
+	}
+	
+	
 
     if (is_command(command, "go")) {
 	set_train_speed("4");
@@ -129,7 +142,10 @@ void process_command(char* command)
 	wprintf(&shell_wnd, "  - stop   make the train stop\n");
 	wprintf(&shell_wnd, "  - rev    reverse train direction\n");
 	wprintf(&shell_wnd, "  - train  start train application\n");
-	wprintf(&shell_wnd, "  - macaddr  get the MAC address of your NE2K\n\n");
+	wprintf(&shell_wnd, "  - macaddr  get the MAC address of your NE2K\n");
+	wprintf(&shell_wnd, "  - start_pktdump prints the received network packets\n");
+	wprintf(&shell_wnd, "  - stop_pktdump stops printing the received network packets\n");
+	
 	return;
     }
 

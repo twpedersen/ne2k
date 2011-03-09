@@ -249,11 +249,7 @@ void ne2k_rx() {
 		pkt_ptr = ne2k_phy.next_pkt * NE2K_PAGE_SIZE;
 
 		/* all the info we need is in the first 4 bytes of packet */
-		kprintf("reading at: %02X\n", pkt_ptr);
 		ne2k_read_mem(&ne2k_phy, pkt_ptr, &rx_hdr, sizeof(rx_hdr));
-		kprintf("next_pkt: %02X\n", rx_hdr.next_pkt);
-		kprintf("count: %02X\n", rx_hdr.count);
-		kprintf("rsr: %02X\n", rx_hdr.rsr);
 		len = rx_hdr.count - 4;
 
 		/* check rsr and handle ring overflow */
@@ -267,6 +263,19 @@ void ne2k_rx() {
 		rx_b.tail = rx_b.head + rx_b.len;
 		ne2k_read_mem(&ne2k_phy, pkt_ptr + sizeof(rx_hdr), (void *)&(rx_b.payload[rx_b.head]), len);
 
+		/* Print the packet info*/
+		/* Check the ENABLE PACKET DUMP flag before printing the packet*/
+		if(enable_pkt_dump == 1){			
+			kprintf("reading at: %02X\n", pkt_ptr);
+			kprintf("next_pkt: %02X\n", rx_hdr.next_pkt);
+			kprintf("count: %02X\n", rx_hdr.count);
+			kprintf("rsr: %02X\n", rx_hdr.rsr);
+			int i;
+			for(i = rx_b.head; i < rx_b.tail; i++) {
+				if (i % 16 == 0) kprintf("\n");
+				kprintf("%02X", rx_b.payload[i]);
+			}
+		}
 		/* update pointers */
 		ne2k_phy.next_pkt = rx_hdr.next_pkt;
 
@@ -284,11 +293,11 @@ void ne2k_handle_irq() {
 	volatile unsigned char isr;
 
 	do {
-		kprintf("handling irqs\n");
+		//kprintf("handling irqs\n");
 
 		/* packet ready for rx */
 		if (isr & NE2K_ISR_PRX) {
-			kprintf("packet received");
+			kprintf("packet received\n");
 		    ne2k_rx();
 		}
 
@@ -310,20 +319,15 @@ void ne2k_handle_irq() {
 
 		/* remote DMA complete */
 		if (isr & NE2K_ISR_RDC) {
-			kprintf("Remote DMA Completed");
-			int i;
-			for(i = rx_b.head; i < rx_b.tail; i++) {
-				if (i % 16 == 0) kprintf("\n");
-				kprintf("%02X", rx_b.payload[i]);
-			}
-
+			kprintf("Remote DMA Completed\n");
+			
 			/* reset interrupt and set DMA complete */
 			ne2k_reg_write(&ne2k_phy, NE2K_REG_CR, NE2K_CR_RD2 | NE2K_CR_STA);
 			ne2k_reg_write(&ne2k_phy, NE2K_REG_ISR, NE2K_ISR_RDC);
 		}
 
 		isr = ne2k_reg_read(&ne2k_phy, NE2K_REG_ISR);
-		kprintf("isr: %d", isr);
+		kprintf("isr: %d\n", isr);
 	} while (isr);
 
 	kprintf("\n***********IRQ SERVICED!***********");
@@ -503,4 +507,10 @@ void init_ne2k() {
 	 * and we busy wait */
 	create_process(ne2k_process, 1, 0, "NE2000");
 	resign();
+}
+
+
+/* Set the ENABLE_PACKET_DUMP flag */
+void ne2k_enable_pktdump(int enabled){
+  enable_pkt_dump = enabled;
 }
