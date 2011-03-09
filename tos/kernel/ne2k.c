@@ -124,7 +124,7 @@
 #define NE2K_TX_SIZE		6
 #define NE2K_TX_BUFS		2
 #define NE2K_PSTART			NE2K_MEMBASE / NE2K_PAGE_SIZE
-#define NE2K_PSTOP			NE2K_PSTART + NE2K_MEMSIZE / NE2K_PAGE_SIZE - NE2K_TX_SIZE + NE2K_TX_BUFS
+#define NE2K_PSTOP			NE2K_PSTART + NE2K_MEMSIZE / NE2K_PAGE_SIZE - NE2K_TX_SIZE * NE2K_TX_BUFS
 #define NE2K_TXPSTART		NE2K_PSTOP
 
 
@@ -231,34 +231,52 @@ void ne2k_rx() {
 
 	struct recv_ring_desc rx_hdr;
 	unsigned short len;
-	unsigned short pkt_ptr = ne2k_phy.next_pkt * NE2K_PAGE_SIZE;
+	/* actual local address of next pkt */
+	unsigned short pkt_ptr;
+	unsigned short current;
 
-	/* all the info we need is in the first 4 bytes of packet */
-	kprintf("reading at: %02X\n", pkt_ptr);
-	ne2k_read_mem(&ne2k_phy, pkt_ptr, &rx_hdr, sizeof(rx_hdr));
-	kprintf("next_pkt: %02X\n", rx_hdr.next_pkt);
-	kprintf("count: %02X\n", rx_hdr.count);
-	kprintf("rsr: %02X\n", rx_hdr.rsr);
-	len = rx_hdr.count - 4;
 
-	/* finish DMA..? */
-	//ne2k_reg_write(&ne2k_phy, NE2K_REG_CR, NE2K_CR_RD2 | NE2K_CR_STA);
+	/* CURR is on page 1 */
+	ne2k_reg_sw_page(&ne2k_phy, 1);
+	current = ne2k_reg_read(&ne2k_phy, NE2K_REG_CURR);
 
-	/* should be getting length of packet first and then calculate head,*/
-	nlb.head = 0;
-	nlb.len = len;
-	kprintf("LEN: %d\n", len);
-	nlb.tail = nlb.head + nlb.len;
-	ne2k_read_mem(&ne2k_phy, pkt_ptr, (void *)&(nlb.payload[nlb.head]), len);
+	/* back to 0 */
+	ne2k_reg_sw_page(&ne2k_phy, 0);
 
-	/* update pointers */
-	/*
-	bndry = ne2k_phy.next_pkt - 1;
-	if (bndry < NE2K_PSTART)
-		ne2k_reg_write(&ne2k_phy, NE2K_REG_BNRY, NE2K_PSTOP - 1);
-	else
-		ne2k_reg_write(&ne2k_phy, NE2K_REG_BNRY, ne2k_phy.next_pkt - 1);
-		*/
+	do {
+		/* reset PRX interrupt */
+		ne2k_reg_write(&ne2k_phy, NE2K_REG_ISR, NE2K_ISR_PRX);
+		pkt_ptr = ne2k_phy.next_pkt * NE2K_PAGE_SIZE;
+
+		/* all the info we need is in the first 4 bytes of packet */
+		kprintf("reading at: %02X\n", pkt_ptr);
+		ne2k_read_mem(&ne2k_phy, pkt_ptr, &rx_hdr, sizeof(rx_hdr));
+		kprintf("next_pkt: %02X\n", rx_hdr.next_pkt);
+		kprintf("count: %02X\n", rx_hdr.count);
+		kprintf("rsr: %02X\n", rx_hdr.rsr);
+		len = rx_hdr.count - 4;
+
+		/* check rsr and handle ring overflow */
+
+		/* get next rx buffer from queue here, factor all buffer / queue
+		 * handling and pkt reading into another function, also we need to make
+		 * reads across PSTOP loop, or maybe use the internal send packet command
+		 * (CR = RD1 | RD0) */
+		rx_b.len = len;
+		rx_b.head = (NLL_MAX_PKT_LEN - len) / 2;
+		rx_b.tail = rx_b.head + rx_b.len;
+		ne2k_read_mem(&ne2k_phy, pkt_ptr + sizeof(rx_hdr), (void *)&(rx_b.payload[rx_b.head]), len);
+
+		/* update pointers */
+		ne2k_phy.next_pkt = rx_hdr.next_pkt;
+
+		/* update BDNRY */
+		if (ne2k_phy.next_pkt == NE2K_PSTART)
+			ne2k_reg_write(&ne2k_phy, NE2K_REG_BNRY, NE2K_PSTOP - 1);
+		else
+			ne2k_reg_write(&ne2k_phy, NE2K_REG_BNRY, ne2k_phy.next_pkt - 1);
+	} while (ne2k_phy.next_pkt != current);
+
 }
 
 void ne2k_handle_irq() {
@@ -271,9 +289,6 @@ void ne2k_handle_irq() {
 		/* packet ready for rx */
 		if (isr & NE2K_ISR_PRX) {
 			kprintf("packet received");
-
-			/* reset interrupt */
-			ne2k_reg_write(&ne2k_phy, NE2K_REG_ISR, NE2K_ISR_PRX);
 		    ne2k_rx();
 		}
 
@@ -297,9 +312,9 @@ void ne2k_handle_irq() {
 		if (isr & NE2K_ISR_RDC) {
 			kprintf("Remote DMA Completed");
 			int i;
-			for(i = nlb.head; i < nlb.tail; i++) {
+			for(i = rx_b.head; i < rx_b.tail; i++) {
 				if (i % 16 == 0) kprintf("\n");
-				kprintf("%02X", nlb.payload[i]);
+				kprintf("%02X", rx_b.payload[i]);
 			}
 
 			/* reset interrupt and set DMA complete */
@@ -463,7 +478,7 @@ void ne2k_print_mac(WINDOW* wnd) {
 	}
 
 	int page = ne2k_reg_get_page(phy);
-	ne2k_reg_sw_page(phy, 2);
+	ne2k_reg_sw_page(phy, 0);
 	ne2k_reg_hexdump(phy);
 	ne2k_reg_sw_page(phy, page);
 	//ne2k_reg_hexdump(phy);

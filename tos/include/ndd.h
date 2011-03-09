@@ -91,6 +91,6 @@ struct ne2k_phy {
 
 
 struct ne2k_phy ne2k_phy;
-struct nl_b nlb;
+struct nl_b rx_b;
 
 #endif
