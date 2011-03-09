@@ -89,7 +89,7 @@ struct ne2k_phy {
 	unsigned char next_pkt;
 };
 
-
+int enable_pkt_dump;
 struct ne2k_phy ne2k_phy;
 struct nl_b rx_b;
 
