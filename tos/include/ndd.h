@@ -36,19 +36,19 @@ struct nl_b {
     int len;
 };
 
-/* init nlb as follows:
- * b->head = NLL_MAX_PKT_LEN / 2;
- * b->tail = b->head;
- * b->len = 0;
+/* init nlb for tx as follows:
+ * b->head = (NLL_MAX_PKT_LEN - len) / 2;
+ * b->len = len;
+ * b->tail = b->head + n->len;
+ * memcpy(data, &b->payload[b->head], len);
  */
-void nl_b_init(struct nl_b *b);
+void nl_b_init(struct nl_b *b, void *data, int len);
 
 /* nlb manipulation functions */
 /* update head, tail, and len.
  * returns an error on doing something illegal,
  * 0 <= head <= tail < NLL_MAX_PKT_LEN
- * do we have some
- * errors #defined someplace in tos?
+ * do we have some errors #defined someplace in tos?
  */
 int nl_b_add_head(struct nl_b *nlb, int len);
 int nl_b_del_head(struct nl_b *nlb, int len);

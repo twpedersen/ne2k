@@ -376,9 +376,9 @@ int ne2k_start(struct ne2k_phy *phy) {
 
 	/* get mac */
 	ne2k_read_mem(phy, NE2K_NOVELL_DATA, (void *) macbuf, 16);
+	ne2k_reg_write(phy, NE2K_REG_CR, NE2K_CR_RD2 | NE2K_CR_STP);
 	for (i = 0; i < ETH_ALEN; i++)
 		phy->macaddr[i] = macbuf[i * 2];
-	ne2k_reg_write(phy, NE2K_REG_CR, NE2K_CR_RD2 | NE2K_CR_STP);
 
 	/* 3) clear RBCR0 and RBCR1 */
 	ne2k_reg_write(phy, NE2K_REG_RBCR0, 0x00);
