@@ -223,7 +223,7 @@ unsigned short page[NO_OF_PAGES][REG_PAGE_SIZE];
 	int i,j;
 	unsigned short *p;
 	clear_window(wnd);
-	/*Read from the pages*/	
+	/*Read from the pages*/
 	for(j = 0; j < NO_OF_PAGES; j++){
 		ne2k_reg_sw_page(&ne2k_phy, j);
 		for(i = 0; i < REG_PAGE_SIZE; i++) {
@@ -235,7 +235,7 @@ unsigned short page[NO_OF_PAGES][REG_PAGE_SIZE];
 		}
 		wprintf(wnd,"p#%d:", j);
 	}
-	
+
 	/*Print the contents of the page*/
 	wprintf(wnd,"\n");
 	for (i = 0; i < REG_PAGE_SIZE; i++) {
@@ -248,6 +248,11 @@ unsigned short page[NO_OF_PAGES][REG_PAGE_SIZE];
 }
 
 /* read pending packets off rx ring */
+/* what happens if the NIC rxs while handling the interrupt? CURR will be
+ * updated by the card and we end up setting BNDRY to the previous value of
+ * CURR - 1. Of course this is a non-issue if no packets are rxed while ISR_PRX
+ * is still high, clear the interrupt before calling this and see what happens.
+ * In short, either fix this now or look for bugs here later */
 void ne2k_rx() {
 
 	struct recv_ring_desc rx_hdr;
@@ -256,29 +261,27 @@ void ne2k_rx() {
 	unsigned short pkt_ptr;
 	unsigned short current;
 
-
 	/* CURR is on page 1 */
 	ne2k_reg_sw_page(&ne2k_phy, 1);
 	current = ne2k_reg_read(&ne2k_phy, NE2K_REG_CURR);
-
-	/* back to 0 */
 	ne2k_reg_sw_page(&ne2k_phy, 0);
 
-	do {
-		/* reset PRX interrupt */
-		ne2k_reg_write(&ne2k_phy, NE2K_REG_ISR, NE2K_ISR_PRX);
+	/* loop for pending packets, CURR is location of next unwritten pkt */
+	while (ne2k_phy.next_pkt != current) {
+
 		pkt_ptr = ne2k_phy.next_pkt * NE2K_PAGE_SIZE;
 
 		/* all the info we need is in the first 4 bytes of packet */
 		ne2k_read_mem(&ne2k_phy, pkt_ptr, &rx_hdr, sizeof(rx_hdr));
-		len = rx_hdr.count - 4;
+		len = rx_hdr.count - sizeof(rx_hdr);
+		ne2k_phy.next_pkt = rx_hdr.next_pkt;
 
 		/* check rsr and handle ring overflow */
 
 		/* get next rx buffer from queue here, factor all buffer / queue
 		 * handling and pkt reading into another function, also we need to make
 		 * reads across PSTOP loop, or maybe use the internal send packet command
-		 * (CR = RD1 | RD0) */
+		 * (CR = RD1 | RD0) and get rid of local ring pointer manipulation */
 		rx_b.len = len;
 		rx_b.head = (NLL_MAX_PKT_LEN - len) / 2;
 		rx_b.tail = rx_b.head + rx_b.len;
@@ -286,40 +289,38 @@ void ne2k_rx() {
 
 		/* Print the packet info*/
 		/* Check the ENABLE PACKET DUMP flag before printing the packet*/
-		if(enable_pkt_dump == 1){			
+		if (enable_pkt_dump == 1) {
 			kprintf("reading at: %02X\n", pkt_ptr);
 			kprintf("next_pkt: %02X\n", rx_hdr.next_pkt);
 			kprintf("count: %02X\n", rx_hdr.count);
 			kprintf("rsr: %02X\n", rx_hdr.rsr);
 			int i;
 			for(i = rx_b.head; i < rx_b.tail; i++) {
-				if (i % 16 == 0) kprintf("\n");
+				if (i % 16 == 0)  kprintf("\n");
 				kprintf("%02X", rx_b.payload[i]);
 			}
 		}
-		/* update pointers */
-		ne2k_phy.next_pkt = rx_hdr.next_pkt;
+	}
 
-		/* update BDNRY */
-		if (ne2k_phy.next_pkt == NE2K_PSTART)
-			ne2k_reg_write(&ne2k_phy, NE2K_REG_BNRY, NE2K_PSTOP - 1);
-		else
-			ne2k_reg_write(&ne2k_phy, NE2K_REG_BNRY, ne2k_phy.next_pkt - 1);
-	} while (ne2k_phy.next_pkt != current);
-
+	/* update BNDRY */
+	if (ne2k_phy.next_pkt == NE2K_PSTART)
+		ne2k_reg_write(&ne2k_phy, NE2K_REG_BNRY, NE2K_PSTOP - 1);
+	else
+		ne2k_reg_write(&ne2k_phy, NE2K_REG_BNRY, ne2k_phy.next_pkt - 1);
 }
 
 void ne2k_handle_irq() {
 
-	volatile unsigned char isr;
+	volatile unsigned char isr = ne2k_reg_read(&ne2k_phy, NE2K_REG_ISR);
 
-	do {
-		//kprintf("handling irqs\n");
+	while ((isr = ne2k_reg_read(&ne2k_phy, NE2K_REG_ISR)) != 0) {
 
 		/* packet ready for rx */
 		if (isr & NE2K_ISR_PRX) {
-			kprintf("packet received\n");
+			kprintf("\npkt received");
 		    ne2k_rx();
+			/* reset PRX interrupt */
+			ne2k_reg_write(&ne2k_phy, NE2K_REG_ISR, NE2K_ISR_PRX);
 		}
 
 		/* packet txed */
@@ -340,18 +341,14 @@ void ne2k_handle_irq() {
 
 		/* remote DMA complete */
 		if (isr & NE2K_ISR_RDC) {
-			kprintf("Remote DMA Completed\n");
-			
-			/* reset interrupt and set DMA complete */
-			ne2k_reg_write(&ne2k_phy, NE2K_REG_CR, NE2K_CR_RD2 | NE2K_CR_STA);
+			kprintf("\nRemote DMA Completed");
+
+			/* reset interrupt */
 			ne2k_reg_write(&ne2k_phy, NE2K_REG_ISR, NE2K_ISR_RDC);
 		}
+	}
 
-		isr = ne2k_reg_read(&ne2k_phy, NE2K_REG_ISR);
-		//kprintf("isr: %d\n", isr);
-	} while (isr);
-
-	kprintf("\n***********IRQ SERVICED!***********");
+	kprintf("\n***********IRQ SERVICED!***********\n");
 }
 
 void ne2k_isr() {
@@ -363,6 +360,8 @@ void ne2k_isr() {
 
 	asm ("movb $0x20,%al");
 	asm ("outb %al,$0x20");
+	asm ("movb $0x20,%al");
+	asm ("outb %al,$0xa0");
 	asm ("pop %edi; pop %esi; pop %ebp; pop %ebx");
 	asm ("pop %edx; pop %ecx; pop %eax");
 	asm ("iret");
@@ -501,7 +500,7 @@ void ne2k_print_mac(WINDOW* wnd) {
 		wprintf(wnd, "%02X", phy->macaddr[i]);
 		if (i != ETH_ALEN - 1)
 			wprintf(wnd, ":");
-	}	
+	}
 }
 
 void ne2k_process(PROCESS self, PARAM param) {
