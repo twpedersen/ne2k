@@ -281,7 +281,6 @@ void init_train(WINDOW* wnd);
 void init_pacman(WINDOW* wnd, int num_ghosts);
 
 /*=====>>> ne2k.c <<<=====================================================*/
-#define NE2K_IRQ 0x69
 
 void ne2k_print_mac();
 void init_ne2k();

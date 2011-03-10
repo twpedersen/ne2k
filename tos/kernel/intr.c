@@ -406,7 +406,6 @@ void init_interrupts()
     init_idt_entry (TIMER_IRQ, isr_timer);
     init_idt_entry (COM1_IRQ, isr_com1);
     init_idt_entry (KEYB_IRQ, isr_keyb);
-	init_idt_entry (NE2K_IRQ, ne2k_isr);
 
     re_program_interrupt_controller();
 

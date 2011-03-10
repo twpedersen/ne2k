@@ -130,6 +130,8 @@
 #define REG_PAGE_SIZE 16
 #define NO_OF_PAGES 3
 
+#define NE2K_IRQ 0x69	/* IRQ 9 + tos' offset */
+
 unsigned short htons(unsigned short s) {
 	int r;
 	r = s << 8;
@@ -359,9 +361,8 @@ void ne2k_isr() {
 	ne2k_handle_irq();
 
 	asm ("movb $0x20,%al");
-	asm ("outb %al,$0x20");
-	asm ("movb $0x20,%al");
-	asm ("outb %al,$0xa0");
+	asm ("outb %al,$0x20");		/* ack IRQ 0-7 */
+	asm ("outb %al,$0xa0");		/* ack IRQ 8-15 */
 	asm ("pop %edi; pop %esi; pop %ebp; pop %ebx");
 	asm ("pop %edx; pop %ecx; pop %eax");
 	asm ("iret");
@@ -457,7 +458,7 @@ int ne2k_start(struct ne2k_phy *phy) {
 	ne2k_reg_write(phy, NE2K_REG_TCR, 0x00);
 
 	/* install interrupt handler */
-	//init_idt_entry(NE2K_IRQ + 0x60, ne2k_isr);
+	init_idt_entry(NE2K_IRQ, ne2k_isr);
 
 	return 0;
 err_out:
