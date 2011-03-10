@@ -127,6 +127,8 @@
 #define NE2K_PSTOP			NE2K_PSTART + NE2K_MEMSIZE / NE2K_PAGE_SIZE - NE2K_TX_SIZE * NE2K_TX_BUFS
 #define NE2K_TXPSTART		NE2K_PSTOP
 
+#define REG_PAGE_SIZE 16
+#define NO_OF_PAGES 3
 
 unsigned short htons(unsigned short s) {
 	int r;
@@ -215,14 +217,33 @@ err_out:
 	return err;
 }
 
-/* print registers for current page */
-void ne2k_reg_hexdump(struct ne2k_phy *phy) {
-
-	int i;
-	int page = ne2k_reg_get_page(phy);
-	kprintf("\nne2k page #%d: ", page);
-	for (i = 0; i <= 0x0F; i++) {
-		kprintf("\n%02X %02X ", i, ne2k_reg_read(phy, i));
+/* print registers of all 3 pages */
+void ne2k_reg_hexdump(WINDOW* wnd) {
+unsigned short page[NO_OF_PAGES][REG_PAGE_SIZE];
+	int i,j;
+	unsigned short *p;
+	clear_window(wnd);
+	/*Read from the pages*/	
+	for(j = 0; j < NO_OF_PAGES; j++){
+		ne2k_reg_sw_page(&ne2k_phy, j);
+		for(i = 0; i < REG_PAGE_SIZE; i++) {
+			page[j][i] = ne2k_reg_read(&ne2k_phy, i);
+		}
+		/* This IF condition can be removed from here and placed before the main for loop, once the display message on RemoteDMA complete is commented out*/
+		if(j==0){
+			wprintf(wnd,"\nAddr  ");
+		}
+		wprintf(wnd,"p#%d:", j);
+	}
+	
+	/*Print the contents of the page*/
+	wprintf(wnd,"\n");
+	for (i = 0; i < REG_PAGE_SIZE; i++) {
+    	wprintf(wnd,"%02X    ", i);
+		for(j = 0;j < NO_OF_PAGES; j++) {
+		  wprintf(wnd,"%02X  ", page[j][i]);
+		}
+		wprintf(wnd,"\n");
 	}
 }
 
@@ -327,7 +348,7 @@ void ne2k_handle_irq() {
 		}
 
 		isr = ne2k_reg_read(&ne2k_phy, NE2K_REG_ISR);
-		kprintf("isr: %d\n", isr);
+		//kprintf("isr: %d\n", isr);
 	} while (isr);
 
 	kprintf("\n***********IRQ SERVICED!***********");
@@ -475,17 +496,12 @@ void ne2k_print_mac(WINDOW* wnd) {
 
 	struct ne2k_phy *phy = &ne2k_phy;
 	int i;
+	clear_window(wnd);
 	for (i = 0; i < ETH_ALEN; i++) {
 		wprintf(wnd, "%02X", phy->macaddr[i]);
 		if (i != ETH_ALEN - 1)
 			wprintf(wnd, ":");
-	}
-
-	int page = ne2k_reg_get_page(phy);
-	ne2k_reg_sw_page(phy, 0);
-	ne2k_reg_hexdump(phy);
-	ne2k_reg_sw_page(phy, page);
-	//ne2k_reg_hexdump(phy);
+	}	
 }
 
 void ne2k_process(PROCESS self, PARAM param) {

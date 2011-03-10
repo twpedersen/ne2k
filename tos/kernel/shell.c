@@ -5,7 +5,7 @@ static WINDOW shell_wnd = {0, 9, 61, 16, 0, 0, 0xDC};
 static WINDOW train_wnd = {0, 0, 80, 8, 0, 0, ' '};
 static WINDOW pacman_wnd = {61, 8, 0, 0, 0, 0, ' '};
 static WINDOW divider_wnd = {0, 8, 80, 1, 0, 0, ' '};
-static WINDOW ne2k_wnd = {60, 0, 20, 3, 0, 2, ' '};
+static WINDOW ne2k_wnd = {60, 0, 20, 20, 0, 2, ' '};
 
 
 
@@ -114,7 +114,10 @@ void process_command(char* command)
 		ne2k_enable_pktdump(enabled);
 		return;
 	}
-	
+	if(is_command(command, "ndd_regdump")){
+		ne2k_reg_hexdump(&ne2k_wnd);	
+		return;
+	}
 	
 
     if (is_command(command, "go")) {
@@ -145,7 +148,7 @@ void process_command(char* command)
 	wprintf(&shell_wnd, "  - macaddr  get the MAC address of your NE2K\n");
 	wprintf(&shell_wnd, "  - start_pktdump prints the received network packets\n");
 	wprintf(&shell_wnd, "  - stop_pktdump stops printing the received network packets\n");
-	
+	wprintf(&shell_wnd, "  - ndd_regdump prints the ne2k register pages\n");
 	return;
     }
 
