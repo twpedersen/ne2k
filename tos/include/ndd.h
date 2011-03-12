@@ -6,7 +6,7 @@
 /************************** NLL.H ****************/
 #define NLL_MAX_PKT_LEN     1500    /* max mtu for now until we figure out how to handle fragmentation */
 #define ETH_ALEN	6
-
+static WINDOW ne2k_wnd = {60, 0, 20, 20, 0, 2, ' '};
 /* txinfo is filled out on rx/tx */
 struct txinfo {
 

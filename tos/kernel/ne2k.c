@@ -231,7 +231,8 @@ unsigned short page[NO_OF_PAGES][REG_PAGE_SIZE];
 		for(i = 0; i < REG_PAGE_SIZE; i++) {
 			page[j][i] = ne2k_reg_read(&ne2k_phy, i);
 		}
-		/* This IF condition can be removed from here and placed before the main for loop, once the display message on RemoteDMA complete is commented out*/
+		/* This IF condition can be removed from here and placed before 
+         * the main for loop, once the display message on RemoteDMA complete is commented out*/
 		if(j==0){
 			wprintf(wnd,"\nAddr  ");
 		}
@@ -247,6 +248,10 @@ unsigned short page[NO_OF_PAGES][REG_PAGE_SIZE];
 		}
 		wprintf(wnd,"\n");
 	}
+	
+	/* Switching back to page 0*/
+	ne2k_reg_sw_page(&ne2k_phy, 0);
+		
 }
 
 /* read pending packets off rx ring */
@@ -267,7 +272,7 @@ void ne2k_rx() {
 	ne2k_reg_sw_page(&ne2k_phy, 1);
 	current = ne2k_reg_read(&ne2k_phy, NE2K_REG_CURR);
 	ne2k_reg_sw_page(&ne2k_phy, 0);
-
+    
 	/* loop for pending packets, CURR is location of next unwritten pkt */
 	while (ne2k_phy.next_pkt != current) {
 
@@ -290,16 +295,18 @@ void ne2k_rx() {
 		ne2k_read_mem(&ne2k_phy, pkt_ptr + sizeof(rx_hdr), (void *)&(rx_b.payload[rx_b.head]), len);
 
 		/* Print the packet info*/
+		/* Clear the window contents before printing the received packet */
+    	clear_window(&ne2k_wnd); 
 		/* Check the ENABLE PACKET DUMP flag before printing the packet*/
 		if (enable_pkt_dump == 1) {
-			kprintf("reading at: %02X\n", pkt_ptr);
-			kprintf("next_pkt: %02X\n", rx_hdr.next_pkt);
-			kprintf("count: %02X\n", rx_hdr.count);
-			kprintf("rsr: %02X\n", rx_hdr.rsr);
+			wprintf(&ne2k_wnd,"\nreading at: %02X\n", pkt_ptr);
+			wprintf(&ne2k_wnd,"next_pkt: %02X\n", rx_hdr.next_pkt);
+			wprintf(&ne2k_wnd,"count: %02X\n", rx_hdr.count);
+			wprintf(&ne2k_wnd,"rsr: %02X\n", rx_hdr.rsr);
 			int i;
 			for(i = rx_b.head; i < rx_b.tail; i++) {
-				if (i % 16 == 0)  kprintf("\n");
-				kprintf("%02X", rx_b.payload[i]);
+				if (i % 16 == 0)  wprintf(&ne2k_wnd,"\n");
+				wprintf(&ne2k_wnd, "%02X", rx_b.payload[i]);
 			}
 		}
 	}
@@ -309,6 +316,7 @@ void ne2k_rx() {
 		ne2k_reg_write(&ne2k_phy, NE2K_REG_BNRY, NE2K_PSTOP - 1);
 	else
 		ne2k_reg_write(&ne2k_phy, NE2K_REG_BNRY, ne2k_phy.next_pkt - 1);
+	
 }
 
 void ne2k_handle_irq() {
@@ -319,7 +327,9 @@ void ne2k_handle_irq() {
 
 		/* packet ready for rx */
 		if (isr & NE2K_ISR_PRX) {
-			kprintf("\npkt received");
+			if(enable_pkt_dump == 1){
+				wprintf(&ne2k_wnd, "\npkt received");
+		    }
 		    ne2k_rx();
 			/* reset PRX interrupt */
 			ne2k_reg_write(&ne2k_phy, NE2K_REG_ISR, NE2K_ISR_PRX);
@@ -343,14 +353,13 @@ void ne2k_handle_irq() {
 
 		/* remote DMA complete */
 		if (isr & NE2K_ISR_RDC) {
-			kprintf("\nRemote DMA Completed");
+		//	kprintf("\nRemote DMA Completed");
 
 			/* reset interrupt */
 			ne2k_reg_write(&ne2k_phy, NE2K_REG_ISR, NE2K_ISR_RDC);
 		}
 	}
-
-	kprintf("\n***********IRQ SERVICED!***********\n");
+    //kprintf("\n***********IRQ SERVICED!***********\n");
 }
 
 void ne2k_isr() {
@@ -527,6 +536,13 @@ void init_ne2k() {
 
 
 /* Set the ENABLE_PACKET_DUMP flag */
-void ne2k_enable_pktdump(int enabled){
-  enable_pkt_dump = enabled;
+void ne2k_pktdump(){
+	/* Clear the window where received packets are dumped*/
+    clear_window(&ne2k_wnd);
+	if(enable_pkt_dump == 1){
+ 		enable_pkt_dump = 0; 		
+	}
+	else if(enable_pkt_dump == 0) {
+		enable_pkt_dump = 1;
+	}
 }

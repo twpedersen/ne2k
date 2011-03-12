@@ -104,16 +104,11 @@ void process_command(char* command)
 		return;
 	}
 	
-	if(is_command(command, "stop_pktdump")){
-		int enabled=0;
-		ne2k_enable_pktdump(enabled);
+	if(is_command(command, "ndd_pktdump")){
+		ne2k_pktdump(&ne2k_wnd);
 		return;
 	}
-	if(is_command(command, "start_pktdump")){
-		int enabled =1;
-		ne2k_enable_pktdump(enabled);
-		return;
-	}
+		
 	if(is_command(command, "ndd_regdump")){
 		ne2k_reg_hexdump(&ne2k_wnd);	
 		return;
@@ -146,8 +141,7 @@ void process_command(char* command)
 	wprintf(&shell_wnd, "  - rev    reverse train direction\n");
 	wprintf(&shell_wnd, "  - train  start train application\n");
 	wprintf(&shell_wnd, "  - macaddr  get the MAC address of your NE2K\n");
-	wprintf(&shell_wnd, "  - start_pktdump prints the received network packets\n");
-	wprintf(&shell_wnd, "  - stop_pktdump stops printing the received network packets\n");
+	wprintf(&shell_wnd, "  - ndd_pktdump prints the received network packets\n");
 	wprintf(&shell_wnd, "  - ndd_regdump prints the ne2k register pages\n");
 	return;
     }
