@@ -124,7 +124,7 @@
 #define NE2K_TX_SIZE		6
 #define NE2K_TX_BUFS		2
 #define NE2K_PSTART			NE2K_MEMBASE / NE2K_PAGE_SIZE
-#define NE2K_PSTOP			NE2K_PSTART + NE2K_MEMSIZE / NE2K_PAGE_SIZE - NE2K_TX_SIZE * NE2K_TX_BUFS
+#define NE2K_PSTOP			NE2K_PSTART + (NE2K_MEMSIZE / NE2K_PAGE_SIZE) - NE2K_TX_SIZE * NE2K_TX_BUFS
 #define NE2K_TXPSTART		NE2K_PSTOP
 
 #define REG_PAGE_SIZE 16
@@ -534,7 +534,6 @@ void init_ne2k() {
 	resign();
 }
 
-
 /* Set the ENABLE_PACKET_DUMP flag */
 void ne2k_pktdump(){
 	/* Clear the window where received packets are dumped*/
@@ -546,3 +545,52 @@ void ne2k_pktdump(){
 		enable_pkt_dump = 1;
 	}
 }
+
+/* Tx - Start */
+void outportw(unsigned short port, unsigned int val){
+	asm volatile ("outw %%ax,%%dx" : : "dN" (port), "a" (val));
+}
+
+int ne_transmit(char *data){
+	int size,len, m = 0;
+	size = 42;
+		
+	ne2k_reg_write(&ne2k_phy, NE2K_REG_CR, NE2K_CR_RD2 | NE2K_CR_STA);
+	ne2k_reg_write(&ne2k_phy, NE2K_REG_ISR, NE2K_ISR_RDC);
+	ne2k_reg_write(&ne2k_phy,NE2K_REG_RBCR0, size);
+	ne2k_reg_write(&ne2k_phy,NE2K_REG_RBCR1, size >>8);
+	ne2k_reg_write(&ne2k_phy,NE2K_REG_RSAR0, ne2k_phy.rx_stop);
+	ne2k_reg_write(&ne2k_phy,NE2K_REG_RSAR1, ne2k_phy.rx_stop >> 8);		
+	ne2k_reg_write(&ne2k_phy, NE2K_REG_CR, NE2K_CR_RD1 | NE2K_CR_STA);
+	
+	len = size;
+	/* align words */
+	if (len & 1) len++;
+	
+	while(len>1) {
+		outportw( ne2k_phy.asicaddr, data[0] | (data[1]<<8));
+		data += 2;
+	    len -= 2;
+	}
+	//Wait
+	int j = 1000000;
+	while(j--);	
+	ne2k_reg_write(&ne2k_phy,NE2K_REG_TPSR,ne2k_phy.rx_pstop);
+	ne2k_reg_write(&ne2k_phy,NE2K_REG_TBCR0, size);
+	ne2k_reg_write(&ne2k_phy,NE2K_REG_TBCR1, size >> 8);
+	ne2k_reg_write(&ne2k_phy, NE2K_REG_CR, NE2K_CR_RD2 | NE2K_CR_TXP | NE2K_CR_STA);
+	//Wait
+	int i = 1000000;
+	while(i--);	
+}
+ 	
+void ne_SendTestArpPacket(){
+	char data[] = 
+	    "\xff\xff\xff\xff\xff\xff\xb0\xc4\x20\x00\x00\x00\x08\x06\x00\x01"
+	    "\x08\x00\x06\x04\x00\x01\xb0\xc4\x20\x00\x00\x00\xc0\xa8\x00\x45"
+ 	    "\x00\x00\x00\x00\x00\x00\xc0\xa8\x00\x2a";
+ 	kprintf("writing test arp packet\n");
+ 	ne_transmit(data);
+}
+ 	
+/* End - Tx */

@@ -114,7 +114,11 @@ void process_command(char* command)
 		return;
 	}
 	
-
+    if(is_command(command,"ndd_pktsend")){
+    ne_SendTestArpPacket();
+    return;    
+    }
+    
     if (is_command(command, "go")) {
 	set_train_speed("4");
 	return;
@@ -143,6 +147,8 @@ void process_command(char* command)
 	wprintf(&shell_wnd, "  - macaddr  get the MAC address of your NE2K\n");
 	wprintf(&shell_wnd, "  - ndd_pktdump prints the received network packets\n");
 	wprintf(&shell_wnd, "  - ndd_regdump prints the ne2k register pages\n");
+	wprintf(&shell_wnd, "  - ndd_pktsend send a broadcast n/w arp packet\n");
+
 	return;
     }
 
