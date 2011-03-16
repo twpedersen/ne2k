@@ -129,7 +129,7 @@
 
 #define REG_PAGE_SIZE 16
 #define NO_OF_PAGES 3
-
+#define ARP_PACKET_LENGTH 42
 #define NE2K_IRQ 0x69	/* IRQ 9 + tos' offset */
 
 unsigned short htons(unsigned short s) {
@@ -547,50 +547,50 @@ void ne2k_pktdump(){
 }
 
 /* Tx - Start */
-void outportw(unsigned short port, unsigned int val){
-	asm volatile ("outw %%ax,%%dx" : : "dN" (port), "a" (val));
-}
-
-int ne_transmit(char *data){
-	int size,len, m = 0;
-	size = 42;
-		
+int ne_transmit(char *data, int len){
+	int packetsize = len;
 	ne2k_reg_write(&ne2k_phy, NE2K_REG_CR, NE2K_CR_RD2 | NE2K_CR_STA);
 	ne2k_reg_write(&ne2k_phy, NE2K_REG_ISR, NE2K_ISR_RDC);
-	ne2k_reg_write(&ne2k_phy,NE2K_REG_RBCR0, size);
-	ne2k_reg_write(&ne2k_phy,NE2K_REG_RBCR1, size >>8);
+	ne2k_reg_write(&ne2k_phy,NE2K_REG_RBCR0, len);
+	ne2k_reg_write(&ne2k_phy,NE2K_REG_RBCR1, len >>8);
 	ne2k_reg_write(&ne2k_phy,NE2K_REG_RSAR0, ne2k_phy.rx_stop);
 	ne2k_reg_write(&ne2k_phy,NE2K_REG_RSAR1, ne2k_phy.rx_stop >> 8);		
 	ne2k_reg_write(&ne2k_phy, NE2K_REG_CR, NE2K_CR_RD1 | NE2K_CR_STA);
 	
-	len = size;
 	/* align words */
-	if (len & 1) len++;
+	if (packetsize & 1) packetsize++;
 	
-	while(len>1) {
-		outportw( ne2k_phy.asicaddr, data[0] | (data[1]<<8));
+	while(packetsize>1) {
+		outsw(data,ne2k_phy.asicaddr, 16);
 		data += 2;
-	    len -= 2;
+	    packetsize -= 2;
 	}
+	
 	//Wait
-	int j = 1000000;
-	while(j--);	
+	//int j = 1000000;
+	//while(j--);	
 	ne2k_reg_write(&ne2k_phy,NE2K_REG_TPSR,ne2k_phy.rx_pstop);
-	ne2k_reg_write(&ne2k_phy,NE2K_REG_TBCR0, size);
-	ne2k_reg_write(&ne2k_phy,NE2K_REG_TBCR1, size >> 8);
+	ne2k_reg_write(&ne2k_phy,NE2K_REG_TBCR0, len);
+	ne2k_reg_write(&ne2k_phy,NE2K_REG_TBCR1, len >> 8);
 	ne2k_reg_write(&ne2k_phy, NE2K_REG_CR, NE2K_CR_RD2 | NE2K_CR_TXP | NE2K_CR_STA);
 	//Wait
 	int i = 1000000;
 	while(i--);	
 }
  	
-void ne_SendTestArpPacket(){
-	char data[] = 
+void ne_sendtestpacket(){
+	char data1[] = 
 	    "\xff\xff\xff\xff\xff\xff\xb0\xc4\x20\x00\x00\x00\x08\x06\x00\x01"
-	    "\x08\x00\x06\x04\x00\x01\xb0\xc4\x20\x00\x00\x00\xc0\xa8\x00\x45"
- 	    "\x00\x00\x00\x00\x00\x00\xc0\xa8\x00\x2a";
+	    "\x08\x00\x06\x04\x00\x01\xb0\xc4\x20\x00\x00\x00\x84\xd4\x91\xce"
+ 	    "\x00\xff\x00\xff\xdc\xd2\x89\xce\x84\xd4\x91\xcd";
+ 	
+ 	char data[] = 
+	    "\xff\xff\xff\xff\xff\xff\xb0\xc4\x20\x00\x00\x00\x08\x06\x00\x01"
+	    "\x08\x00\x06\x04\x00\x01\xb0\xc4\x20\x00\x00\x00\x84\xd4\x91\xce"
+ 	    "\x00\xff\x00\x00\x00\x00\x00\x00\x84\xd4\x91\xcd";
+ 	
  	kprintf("writing test arp packet\n");
- 	ne_transmit(data);
+ 	ne_transmit(data, ARP_PACKET_LENGTH);
 }
  	
 /* End - Tx */

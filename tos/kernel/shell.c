@@ -115,7 +115,7 @@ void process_command(char* command)
 	}
 	
     if(is_command(command,"ndd_pktsend")){
-    ne_SendTestArpPacket();
+    	ne_sendtestpacket();
     return;    
     }
     
